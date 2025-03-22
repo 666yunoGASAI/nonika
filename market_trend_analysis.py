@@ -822,12 +822,12 @@ def add_market_trends_tab(comments_df):
     if not high_intent.empty:
         for i, (_, row) in enumerate(high_intent.head(5).iterrows()):
             st.markdown(f"""
-            <div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 5px solid #0074D9;">
-                <p style="margin: 0; color: #000000;"><strong>Comment {i+1}:</strong> {row['Comment']}</p>
-                <p style="margin: 0; font-size: 0.8em; color: #333333;">Purchase Intent: {row['purchase_intent']:.2f} | Market Score: {row['market_trend_score']:.1f}</p>
+            <div style="background-color: #2E4057; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 5px solid #FF9F1C;">
+                <p style="margin: 0; color: white !important; font-weight: 500;"><strong style="color: #FF9F1C !important;">Comment {i+1}:</strong> {row['Comment']}</p>
+                <p style="margin: 0; font-size: 0.8em; color: #CCCCCC !important;">Purchase Intent: {row['purchase_intent']:.2f} | Market Score: {row['market_trend_score']:.1f}</p>
             </div>
         """, unsafe_allow_html=True)
-    else:
+else:
     st.info("No comments with high purchase intent detected.")
     
     # Show full report
