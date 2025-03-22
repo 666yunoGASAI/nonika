@@ -195,12 +195,19 @@ def plot_market_prediction(data, trend_summary, save_path=None):
                                    theta2=180 - bounds[i] * 1.8,
                                    color=gauge_colors[i], alpha=0.8))
     
-    # Add needle showing current score
+    # Fix for needle drawing - use a simple triangle and line instead of RegularPolygon
     needle_angle = 180 - trend_summary['overall_score'] * 1.8
-    ax1.add_patch(patches.RegularPolygon((0.5, 0), 3, 0.05, 
-                                         np.radians(needle_angle), 
-                                         color='black'))
-    ax1.add_patch(patches.Circle((0.5, 0), 0.01, color='black'))
+    needle_rad = np.radians(needle_angle)
+    
+    # Calculate needle endpoint
+    x_end = 0.5 + 0.4 * np.cos(needle_rad)
+    y_end = 0 + 0.4 * np.sin(needle_rad)
+    
+    # Draw needle as a line
+    ax1.plot([0.5, x_end], [0, y_end], color='black', linewidth=2)
+    
+    # Add a small circle at the base of the needle
+    ax1.add_patch(patches.Circle((0.5, 0), 0.02, color='black', zorder=10))
     
     # Add gauge labels
     for i, bound in enumerate(bounds):
