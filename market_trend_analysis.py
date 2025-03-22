@@ -814,21 +814,21 @@ def add_market_trends_tab(comments_df):
     st.subheader("Market Trend Visualization")
     market_fig = plot_market_prediction(enhanced_df, trend_summary)
     st.pyplot(market_fig)
-    
+
     # Top comments with purchase intent
     st.subheader("Top Comments with Purchase Intent")
-    
+
     high_intent = enhanced_df[enhanced_df['purchase_intent'] > 0.4].sort_values('market_trend_score', ascending=False)
     if not high_intent.empty:
         for i, (_, row) in enumerate(high_intent.head(5).iterrows()):
             st.markdown(f"""
             <div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 5px solid #0074D9;">
-                <p style="margin: 0;"><strong>Comment {i+1}:</strong> {row['Comment']}</p>
-                <p style="margin: 0; font-size: 0.8em;">Purchase Intent: {row['purchase_intent']:.2f} | Market Score: {row['market_trend_score']:.1f}</p>
+                <p style="margin: 0; color: #000000;"><strong>Comment {i+1}:</strong> {row['Comment']}</p>
+                <p style="margin: 0; font-size: 0.8em; color: #333333;">Purchase Intent: {row['purchase_intent']:.2f} | Market Score: {row['market_trend_score']:.1f}</p>
             </div>
-            """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     else:
-        st.info("No comments with high purchase intent detected.")
+    st.info("No comments with high purchase intent detected.")
     
     # Show full report
     with st.expander("View Full Market Trend Report"):
