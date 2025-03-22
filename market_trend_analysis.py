@@ -195,8 +195,9 @@ def plot_market_prediction(data, trend_summary, save_path=None):
                                    theta2=180 - bounds[i] * 1.8,
                                    color=gauge_colors[i], alpha=0.8))
     
-    # Fix for needle drawing - use a simple triangle and line instead of RegularPolygon
-    needle_angle = 180 - trend_summary['overall_score'] * 1.8
+    # Fix for needle drawing - ensure we're working with a float
+    overall_score = float(trend_summary['overall_score'])
+    needle_angle = 180 - overall_score * 1.8
     needle_rad = np.radians(needle_angle)
     
     # Calculate needle endpoint
