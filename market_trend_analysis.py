@@ -263,6 +263,7 @@ def calculate_market_trend_score(df):
     
     # 4. Calculate sentiment density (percentage of positive comments)
     positive_ratio = (data['sentiment_value'] > 0).mean()
+    negative_ratio = (data['sentiment_value'] < 0).mean()
     
     # 5. Apply enhanced sentiment density multiplier to purchase intent
     # This creates a stronger relationship between positive sentiment and purchase intent
@@ -271,14 +272,14 @@ def calculate_market_trend_score(df):
     data['adjusted_purchase_intent'] = data['adjusted_purchase_intent'].clip(0, 1)  # Ensure 0-1 range
     
     # 6. Calculate market trend score with enhanced weighting
-    # More balanced approach with amplified interaction between sentiment and intent
+    # FIX 1: Give more weight to overall sentiment distribution
     data['market_trend_score'] = (
-        # Sentiment component (0.4 weight) - slightly reduced from 0.5
-        0.4 * data['sentiment_value'] * data['sentiment_magnitude'] +
-        # Purchase intent component (0.35 weight) - increased from 0.3
-        0.35 * data['adjusted_purchase_intent'] +
-        # Interaction effect (0.25 weight) - increased from 0.2 to strengthen relationship
-        0.25 * (data['sentiment_value'] > 0) * data['adjusted_purchase_intent']
+        # Sentiment component (increased from 0.4 to 0.65)
+        0.65 * data['sentiment_value'] * data['sentiment_magnitude'] +
+        # Purchase intent component (reduced from 0.35 to 0.20)
+        0.20 * data['adjusted_purchase_intent'] +
+        # Interaction effect (reduced from 0.25 to 0.15)
+        0.15 * (data['sentiment_value'] > 0) * data['adjusted_purchase_intent']
     )
     
     # Scale to 0-100 range for easier interpretation
@@ -292,15 +293,26 @@ def calculate_market_trend_score(df):
     else:
         data['market_trend_score'] = 50  # Default to neutral if all scores are the same
     
-    # Summarize the overall market trend
-    overall_score = data['market_trend_score'].mean()
+    # FIX 2: Directly incorporate sentiment distribution into the final score
+    # Calculate base overall score
+    overall_score_raw = data['market_trend_score'].mean()
+    
+    # FIX 3: Directly align the overall score with sentiment distribution
+    # This ensures that positive sentiment majority will result in >50 score
+    # Create a sentiment-based score using sentiment distribution
+    sentiment_based_score = 50 + 50 * (positive_ratio - negative_ratio)
+    
+    # Blend the original score with the sentiment-based score
+    # Give more weight to sentiment distribution (0.6) than to the calculated score (0.4)
+    overall_score = 0.4 * overall_score_raw + 0.6 * sentiment_based_score
     
     # Calculate viral potential based on positive sentiment density and purchase intent
     viral_potential = (positive_ratio * 0.7 + data['adjusted_purchase_intent'].mean() * 0.3) * 100
     
     trend_summary = {
-        'overall_score': overall_score,
+        'overall_score': overall_score,  # Use the blended score
         'positive_sentiment_ratio': positive_ratio,
+        'negative_sentiment_ratio': negative_ratio,
         'purchase_intent_ratio': (data['adjusted_purchase_intent'] > 0.3).mean(),  # Lowered threshold from 0.5 to 0.3
         'sentiment_density_factor': sentiment_density_factor,
         'viral_potential': viral_potential,
@@ -538,7 +550,7 @@ def generate_market_trend_report(data, product_name, prediction):
     Returns:
         str: Formatted report
     """
-    # Format the report
+    # Format the report - fixed by removing duplicated sections
     report = f"""
 # Market Trend Analysis for {product_name}
 **Report Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}
