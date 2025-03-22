@@ -1,4 +1,4 @@
-        # market_trend_analysis.py
+# market_trend_analysis.py
 """
 Market trend analysis functions for TikTok Sentiment Analysis.
 This module provides functions to analyze purchase intent and predict market trends
@@ -16,9 +16,9 @@ from datetime import datetime
 
 def detect_purchase_intent(text_series):
     """
-    Enhanced analysis of text to detect purchase intent signals.
+    Enhanced analysis of text to detect purchase intent signals with improved sensitivity.
     Returns scores from 0-1 where higher scores = stronger buying signals.
-    Expanded parameter detection for broader coverage of buying intent indicators.
+    Better detects subtle intent patterns and indirect purchase signals.
     
     Args:
         text_series: Series or list of text strings to analyze
@@ -28,101 +28,151 @@ def detect_purchase_intent(text_series):
     """
     import re
     
-    # Enhanced keywords indicating purchase intent
+    # Enhanced keywords indicating purchase intent - now with more variations and subtle signals
     intent_phrases = [
-        # Direct intent phrases
-        r'(want|need|going|plan|intend) to (buy|get|purchase|order|acquire|own)',
-        r'(will|gonna|about to) (buy|get|purchase|order|pick up|grab)',
-        r'i\'m (buying|getting|purchasing|ordering)',
-        r'adding to (cart|basket|wishlist|favorites)',
+        # Direct intent phrases (expanded)
+        r'(want|need|going|plan|intend|think|consider|might|could|would|should|wish) (to )?(buy|get|purchase|order|acquire|own|try|have)',
+        r'(will|gonna|about to|planning on|looking forward to) (buy|get|purchase|order|pick up|grab|shop for)',
+        r'i\'m (buying|getting|purchasing|ordering|considering|interested in)',
+        r'adding to (cart|basket|wishlist|favorites|list)',
         r'take my money',
         r'shut up and take my money',
-        r'where (can|do|could|should|would) (i|you|we|someone) (buy|get|purchase|find|order)',
-        r'looking to (buy|purchase|get|acquire|invest in)',
-        r'(buying|purchasing|getting|ordering) this',
-        r'can\'t wait to (buy|get|have|own|try)',
+        r'where (can|do|could|should|would|might) (i|you|we|someone) (buy|get|purchase|find|order)',
+        r'looking to (buy|purchase|get|acquire|invest in|try|have)',
+        r'(buying|purchasing|getting|ordering|trying) this',
+        r'can\'t wait to (buy|get|have|own|try|use)',
         r'need this in my life',
-        r'(ordering|buying|purchasing) (this|now|soon|today|tomorrow)',
+        r'(ordering|buying|purchasing) (this|now|soon|today|tomorrow|online)',
         r'purchased',
         r'bought',
         r'(in|added to) my cart',
         r'on my wishlist',
-        r'link to (buy|purchase|shop|order)',
+        r'link to (buy|purchase|shop|order|website|store)',
         r'link in bio',
-        r'where to (buy|shop|find|order)',
+        r'where to (buy|shop|find|order|get)',
         
-        # Additional social indicators
-        r'must (have|buy|get|own)',
-        r'everyone (needs|should get|should buy)',
-        r'(obsessed|in love) with this',
+        # Additional social indicators (expanded)
+        r'must (have|buy|get|own|try)',
+        r'(everyone|everybody) (needs|should get|should buy|would love|wants)',
+        r'(obsessed|in love|amazed|impressed) with this',
         r'best purchase',
-        r'worth (every penny|the money|the price)',
-        r'(perfect|ideal|amazing) for (me|my)',
-        r'i (need|want) one',
-        r'(ordering|buying) (another|a second)',
-        r'just (bought|ordered|purchased)',
-        r'already (bought|ordered|purchased)',
+        r'worth (every penny|the money|the price|buying|checking out|looking into)',
+        r'(perfect|ideal|amazing|great|excellent|good) for (me|my|anyone|everyone|people)',
+        r'i (need|want|could use|would use|like|love) (this|one|it|these)',
+        r'(ordering|buying) (another|a second|more)',
+        r'just (bought|ordered|purchased|got|received)',
+        r'already (bought|ordered|purchased|own|have)',
         r'selling out (fast|quickly)',
         r'add to cart',
         r'buy now',
         r'take my money',
         r'drop the link',
-        r'where did you (get|buy)',
-        r'where can i (get|buy|find|order)',
-        r'how much (is it|does it cost)',
-        r'(great|good|amazing) (deal|price|value)',
-        r'invest in this'
+        r'where did you (get|buy|find)',
+        r'where can i (get|buy|find|order|purchase)',
+        r'how much (is it|does it cost|would this be)',
+        r'(great|good|amazing|excellent|awesome|perfect) (deal|price|value|product|item)',
+        r'invest in this',
+        
+        # Implied intent phrases (NEW - more subtle signals)
+        r'(need|could use|would be useful|would help|would be perfect)',
+        r'(wish|hope) (i|my)',
+        r'(seems|looks) (useful|helpful|perfect|great|amazing)',
+        r'(better than|superior to|beats) (what i have|my current|existing)',
+        r'(would complement|would go well with|matches|fits with) my',
+        r'(impressive|incredible|outstanding|remarkable|exceptional)',
+        r'(exactly what|just what) (i|we) (need|want|looking for)',
+        r'(saving up|saving money) for',
+        r'(birthday|christmas|holiday) (list|gift|present|idea)',
+        r'(checks all|ticks all) (the boxes|my boxes)',
+        r'(quality|features|design) (is|looks|seems) (amazing|excellent|great|perfect)',
+        r'(want|need) this for (my|the)',
+        r'(tempting|tempted|considering|contemplating)',
+        r'(definitely|certainly|absolutely) (considering|an option|a possibility)'
     ]
     
     # Build regex pattern for all phrases
     intent_pattern = '|'.join(intent_phrases)
     
-    # Expanded question phrases indicating consideration
+    # Expanded question phrases indicating consideration (now with more variations)
     question_phrases = [
         r'(is|are) (it|they|this|these) worth',
-        r'should i (buy|get|invest in|spend money on)',
-        r'(is|are) (it|they|this|these) (good|great|worth|quality|durable|reliable)',
-        r'(how|what) (is|are) the (quality|price|cost|value|durability|performance)',
-        r'does (it|this) (work|perform|last|hold up)',
-        r'how (much|long|well|quickly)',
-        r'(good|worth) (investment|purchase|buy)',
-        r'anyone (tried|bought|used|have)',
+        r'should i (buy|get|invest in|spend money on|consider|look into|try)',
+        r'(is|are) (it|they|this|these) (good|great|worth|quality|durable|reliable|effective|useful)',
+        r'(how|what) (is|are) the (quality|price|cost|value|durability|performance|shipping|delivery)',
+        r'does (it|this) (work|perform|last|hold up|do the job)',
+        r'how (much|long|well|quickly|easily|effectively)',
+        r'(good|worth|wise) (investment|purchase|buy|choice|decision)',
+        r'anyone (tried|bought|used|have|recommend|like|love)',
         r'thoughts on',
         r'reviews on',
         r'recommend',
         r'comparable to',
         r'better than',
-        r'thinking (about|of) (getting|buying)',
-        r'would you recommend'
+        r'thinking (about|of) (getting|buying|trying|ordering)',
+        r'would you recommend',
+        r'(pros|cons) of',
+        r'(any|are there any) (issues|problems|concerns)',
+        r'(how long|how much time) (does it take|to)',
+        r'(is|are) (there|it|they) (compatible|available)',
+        r'(would|could|might|should) (work for|be good for|fit)'
     ]
     question_pattern = '|'.join(question_phrases)
     
-    # Social proof phrases that indirectly indicate purchase likelihood
+    # Social proof phrases (expanded with more subtle signals)
     social_proof_phrases = [
-        r'(everyone|everybody) (has|loves|wants|needs) (this|it|one)',
-        r'(trending|viral|popular)',
-        r'(sold out|selling fast)',
-        r'(best seller|top rated)',
-        r'influencer favorite',
-        r'celebrity endorsed',
-        r'(tiktok|instagram) made me buy it',
-        r'(worth the hype|lives up to the hype)',
-        r'(my friend|everyone i know) (has|got|loves) (this|it)'
+        r'(everyone|everybody) (has|loves|wants|needs|raves about|talks about) (this|it|one)',
+        r'(trending|viral|popular|hot|must-have|essential|top|favorite)',
+        r'(sold out|selling fast|going quickly|limited stock|limited availability)',
+        r'(best seller|top rated|highly rated|five star|5 star|well reviewed)',
+        r'influencer (favorite|choice|pick|recommended)',
+        r'celebrity (endorsed|approved|used|seen with)',
+        r'(tiktok|instagram|social media) made me (buy|want|need) it',
+        r'(worth the hype|lives up to the hype|believe the hype|deserves the hype)',
+        r'(my friend|everyone i know|people) (has|got|loves|recommends|uses) (this|it)',
+        r'(saw|seen) (it|this) (everywhere|all over|online)',
+        r'(everyone|everybody) (is talking about|raves about)',
+        r'(went|going) viral',
+        r'(blowing up|taking off|gaining popularity)',
+        r'(online|internet) (sensation|favorite|obsession)'
     ]
     social_pattern = '|'.join(social_proof_phrases)
     
-    # Positive review phrases (hint at validation for others to buy)
+    # Positive review phrases (expanded)
     review_phrases = [
-        r'(highly|definitely|absolutely) recommend',
-        r'(love|loving|loved) (this|it|mine)',
-        r'(best|greatest|amazing) (purchase|investment|decision)',
-        r'(changed|improved) my life',
-        r'(excellent|fantastic|incredible|outstanding) (quality|value|product)',
-        r'(five|5) stars?',
-        r'would (buy|purchase|get) again',
-        r'(satisfied|happy|impressed) with (my purchase|this|it)'
+        r'(highly|definitely|absolutely|strongly|totally) recommend',
+        r'(love|loving|loved|adore|enjoy|enjoying|enjoyed) (this|it|mine|using it)',
+        r'(best|greatest|amazing|awesome|fantastic|excellent|outstanding) (purchase|investment|decision|buy|product)',
+        r'(changed|improved|transformed|enhanced|upgraded) my life',
+        r'(excellent|fantastic|incredible|outstanding|superb|exceptional|superior) (quality|value|product|item|design)',
+        r'(five|5|4\.5|4) stars?',
+        r'would (buy|purchase|get|choose|select|pick) again',
+        r'(satisfied|happy|impressed|pleased|delighted|thrilled) with (my purchase|this|it)',
+        r'(no regrets|worth every penny|money well spent|great value)',
+        r'(exceeded|surpassed|beat) (my|all) expectations',
+        r'(can\'t|couldn\'t) be (happier|more satisfied)',
+        r'(perfect|ideal|exactly what i wanted|just what i needed)',
+        r'(so glad|very happy|really pleased) (i bought|i got|i purchased)',
+        r'(best thing|best product) (i\'ve|i have) (bought|purchased|owned|used)'
     ]
     review_pattern = '|'.join(review_phrases)
+    
+    # Product interest phrases (NEW - detecting interest without explicit intent)
+    interest_phrases = [
+        r'(interesting|intriguing|cool|neat|nice|good|great) (product|design|idea|concept|thing)',
+        r'(love|like|appreciate|enjoy) the (design|look|style|concept|features)',
+        r'(beautiful|gorgeous|attractive|elegant|sleek|stylish|pretty)',
+        r'(useful|practical|functional|handy|convenient|versatile|helpful)',
+        r'(innovative|creative|clever|smart|brilliant|genius)',
+        r'(high quality|well made|well built|well designed|well crafted|premium)',
+        r'(would be|could be|might be) (perfect|great|useful|helpful) for',
+        r'(solves|fixes|addresses|tackles) (a|the|my) (problem|issue|challenge)',
+        r'(wish|if only) (i|we) (had|could)',
+        r'(never seen|first time seeing) (anything|something) (like this|so)',
+        r'(didn\'t know|didn\'t realize) (i|you|we|they) (needed|wanted|could)',
+        r'(brilliant|genius|clever) (idea|solution|design|concept)',
+        r'(i\'m|i am) (curious|interested|intrigued) (about|by|in)'
+    ]
+    interest_pattern = '|'.join(interest_phrases)
     
     results = []
     
@@ -145,25 +195,35 @@ def detect_purchase_intent(text_series):
         # Check for positive review indicators
         review_matches = len(re.findall(review_pattern, text))
         
+        # Check for interest indicators (NEW)
+        interest_matches = len(re.findall(interest_pattern, text))
+        
         # Check for specific actions
         actions = {
-            'purchase_completed': any(word in text for word in ['bought', 'purchased', 'ordered', 'received', 'arrived', 'delivered', 'own', 'mine']),
-            'future_intent': any(phrase in text for phrase in ['will buy', 'gonna buy', 'planning to', 'going to buy', 'about to order', 'adding to cart']),
-            'desire': any(word in text for word in ['want', 'need', 'wish', 'hoping', 'must have', 'obsessed', 'love this', 'can\'t wait']),
-            'urgency': any(phrase in text for phrase in ['selling out', 'limited stock', 'while supplies last', 'almost gone', 'back in stock', 'exclusive'])
+            'purchase_completed': any(word in text for word in ['bought', 'purchased', 'ordered', 'received', 'arrived', 'delivered', 'own', 'mine', 'got it', 'have it']),
+            'future_intent': any(phrase in text for phrase in ['will buy', 'gonna buy', 'planning to', 'going to buy', 'about to order', 'adding to cart', 'might buy', 'considering', 'thinking about']),
+            'desire': any(word in text for word in ['want', 'need', 'wish', 'hoping', 'must have', 'obsessed', 'love this', 'can\'t wait', 'eager', 'excited']),
+            'urgency': any(phrase in text for phrase in ['selling out', 'limited stock', 'while supplies last', 'almost gone', 'back in stock', 'exclusive', 'limited time', 'special offer']),
+            'research': any(phrase in text for phrase in ['researching', 'looking into', 'comparing', 'checking out', 'reading reviews', 'watching videos'])
         }
         
-        # Calculate enhanced intent score
+        # Calculate enhanced intent score with greater weight on subtle signals and interest
         intent_score = min(1.0, (
-            0.8 * intent_matches +
-            0.3 * question_matches +
-            0.9 * actions['purchase_completed'] +
-            0.7 * actions['future_intent'] +
-            0.5 * actions['desire'] +
-            0.4 * social_matches +
-            0.3 * review_matches +
-            0.6 * actions['urgency']
+            0.9 * intent_matches +                # Increased from 0.8
+            0.5 * question_matches +              # Increased from 0.3
+            1.0 * actions['purchase_completed'] + # Increased from 0.9
+            0.8 * actions['future_intent'] +      # Increased from 0.7
+            0.7 * actions['desire'] +             # Increased from 0.5
+            0.6 * social_matches +                # Increased from 0.4
+            0.5 * review_matches +                # Increased from 0.3
+            0.7 * actions['urgency'] +            # Increased from 0.6
+            0.4 * interest_matches +              # NEW
+            0.3 * actions['research']             # NEW
         ))
+        
+        # Add a baseline score for any positive sentiment (ensures minimal intent for positive comments)
+        if 'positive' in text or 'love' in text or 'great' in text or 'good' in text or 'amazing' in text:
+            intent_score = max(0.2, intent_score)  # Ensure at least 0.2 for positive comments
         
         results.append(intent_score)
     
@@ -172,8 +232,8 @@ def detect_purchase_intent(text_series):
 def calculate_market_trend_score(df):
     """
     Calculate a market trend score that predicts buying behavior.
-    Higher scores indicate stronger positive market trends.
-    Enhanced with stronger correlation between positive sentiment and purchase intent.
+    Enhanced with stronger correlation between positive sentiment and purchase intent,
+    and improved handling of positive comments without explicit intent.
     
     Args:
         df (pandas.DataFrame): DataFrame with Enhanced Sentiment column
@@ -204,21 +264,21 @@ def calculate_market_trend_score(df):
     # 4. Calculate sentiment density (percentage of positive comments)
     positive_ratio = (data['sentiment_value'] > 0).mean()
     
-    # 5. Apply sentiment density multiplier to purchase intent
+    # 5. Apply enhanced sentiment density multiplier to purchase intent
     # This creates a stronger relationship between positive sentiment and purchase intent
-    sentiment_density_factor = 1.0 + (positive_ratio - 0.5) * 0.6  # Ranges from 0.7 to 1.3 typically
+    sentiment_density_factor = 1.0 + (positive_ratio - 0.5) * 1.2  # Increased from 0.6 to 1.2
     data['adjusted_purchase_intent'] = data['purchase_intent'] * sentiment_density_factor
     data['adjusted_purchase_intent'] = data['adjusted_purchase_intent'].clip(0, 1)  # Ensure 0-1 range
     
     # 6. Calculate market trend score with enhanced weighting
     # More balanced approach with amplified interaction between sentiment and intent
     data['market_trend_score'] = (
-        # Sentiment component (0.5 weight)
-        0.5 * data['sentiment_value'] * data['sentiment_magnitude'] +
-        # Purchase intent component (0.3 weight) 
-        0.3 * data['adjusted_purchase_intent'] +
-        # Interaction effect (0.2 weight) - rewards positive sentiment with intent
-        0.2 * (data['sentiment_value'] > 0) * data['adjusted_purchase_intent']
+        # Sentiment component (0.4 weight) - slightly reduced from 0.5
+        0.4 * data['sentiment_value'] * data['sentiment_magnitude'] +
+        # Purchase intent component (0.35 weight) - increased from 0.3
+        0.35 * data['adjusted_purchase_intent'] +
+        # Interaction effect (0.25 weight) - increased from 0.2 to strengthen relationship
+        0.25 * (data['sentiment_value'] > 0) * data['adjusted_purchase_intent']
     )
     
     # Scale to 0-100 range for easier interpretation
@@ -241,7 +301,7 @@ def calculate_market_trend_score(df):
     trend_summary = {
         'overall_score': overall_score,
         'positive_sentiment_ratio': positive_ratio,
-        'purchase_intent_ratio': (data['adjusted_purchase_intent'] > 0.5).mean(),
+        'purchase_intent_ratio': (data['adjusted_purchase_intent'] > 0.3).mean(),  # Lowered threshold from 0.5 to 0.3
         'sentiment_density_factor': sentiment_density_factor,
         'viral_potential': viral_potential,
         'trend_category': 'Strong Positive' if overall_score > 75 else
@@ -336,7 +396,7 @@ def plot_market_prediction(data, trend_summary, save_path=None):
     
     # 3. Purchase intent distribution
     ax3 = plt.subplot2grid((3, 2), (1, 1))
-    intent_counts = (data['purchase_intent'] > 0.7).sum(), ((data['purchase_intent'] <= 0.7) & (data['purchase_intent'] > 0.3)).sum(), (data['purchase_intent'] <= 0.3).sum()
+    intent_counts = (data['purchase_intent'] > 0.4).sum(), ((data['purchase_intent'] <= 0.4) & (data['purchase_intent'] > 0.15)).sum(), (data['purchase_intent'] <= 0.15).sum()
     ax3.pie(intent_counts, 
             labels=['High Intent', 'Medium Intent', 'Low Intent'],
             colors=['#0074D9', '#FFDC00', '#DDDDDD'],
@@ -496,9 +556,9 @@ Based on sentiment analysis of {len(data)} comments, {product_name} shows a **{p
 - Negative comments: {(data['sentiment_value'] < 0).sum()} ({(data['sentiment_value'] < 0).mean()*100:.1f}%)
 
 ## Purchase Intent Analysis
-- High intent (>70%): {(data['purchase_intent'] > 0.7).sum()} comments
-- Medium intent (30-70%): {((data['purchase_intent'] <= 0.7) & (data['purchase_intent'] > 0.3)).sum()} comments
-- Low intent (<30%): {(data['purchase_intent'] <= 0.3).sum()} comments
+- High intent (>40%): {(data['purchase_intent'] > 0.4).sum()} comments
+- Medium intent (15-40%): {((data['purchase_intent'] <= 0.4) & (data['purchase_intent'] > 0.15)).sum()} comments
+- Low intent (<15%): {(data['purchase_intent'] <= 0.15).sum()} comments
 
 ## Sales Prediction
 With a baseline volume of {prediction['baseline_volume']} units:
@@ -531,7 +591,7 @@ With a baseline volume of {prediction['baseline_volume']} units:
     report += "\n## Sample Comments\n"
     
     # Add positive comments with high intent
-    high_value_mask = (data['sentiment_value'] > 0) & (data['purchase_intent'] > 0.7)
+    high_value_mask = (data['sentiment_value'] > 0) & (data['purchase_intent'] > 0.4)
     if high_value_mask.any():
         high_value_comments = data[high_value_mask].sort_values('market_trend_score', ascending=False)['Comment'].head(3)
         report += "\n### High-Value Positive Comments (with purchase intent)\n"
@@ -552,6 +612,7 @@ With a baseline volume of {prediction['baseline_volume']} units:
 def add_market_trends_tab(comments_df):
     """
     Add a market trends tab to analyze purchase intent and market predictions.
+    Modified to use more appropriate thresholds for intent classification.
     
     Args:
         comments_df (pandas.DataFrame): DataFrame with comment data
@@ -641,8 +702,8 @@ def add_market_trends_tab(comments_df):
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        # Intent vs sentiment heatmap
-        intent_bins = [0, 0.3, 0.7, 1.0]
+        # Intent vs sentiment heatmap with UPDATED thresholds
+        intent_bins = [0, 0.15, 0.4, 1.0]  # Lower thresholds to capture subtle intent
         intent_labels = ['Low', 'Medium', 'High']
         sentiment_bins = [-1.01, -0.3, 0.3, 1.01]  # Using -1.01 and 1.01 to include -1 and 1
         sentiment_labels = ['Negative', 'Neutral', 'Positive']
@@ -724,7 +785,7 @@ def add_market_trends_tab(comments_df):
     # Top comments with purchase intent
     st.subheader("Top Comments with Purchase Intent")
     
-    high_intent = enhanced_df[enhanced_df['purchase_intent'] > 0.7].sort_values('market_trend_score', ascending=False)
+    high_intent = enhanced_df[enhanced_df['purchase_intent'] > 0.4].sort_values('market_trend_score', ascending=False)
     if not high_intent.empty:
         for i, (_, row) in enumerate(high_intent.head(5).iterrows()):
             st.markdown(f"""
