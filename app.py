@@ -10,8 +10,7 @@ from sentiment_analysis import (
     combined_sentiment_analysis,
     enhanced_sentiment_analysis,
     get_sentiment_breakdown,
-    analyze_for_trolling,
-    analyze_comment_with_trolling
+    analyze_for_trolling
 )
 # Import Tagalog sentiment functions
 from tagalog_sentiment import (
@@ -32,7 +31,6 @@ import plotly.graph_objects as go
 import io
 import csv
 import chardet  # You may need to pip install chardet
-# Import market trend analysis functions
 from market_trend_analysis import (
     calculate_market_trend_score,
     plot_market_prediction,
@@ -41,15 +39,15 @@ from market_trend_analysis import (
     add_market_trends_tab
 )
 
+troll_detector = TrollDetector()
+
+
 # Load API keys
 load_dotenv()
 APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN")
 
 # Initialize Apify Client
 client = ApifyClient(APIFY_API_TOKEN)
-
-# Initialize troll detector
-troll_detector = TrollDetector()
 
 # Streamlit App Configuration
 st.set_page_config(
@@ -116,6 +114,41 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
     else:  # Multilingual mode
         # Always use the multilingual analyzer
         return tagalog_enhanced_sentiment_analysis(text)
+    
+def analyze_comment_with_trolling(text, language_mode=None):
+    """
+    Analyzes comment for both sentiment and troll detection.
+    
+    Args:
+        text: Text to analyze
+        language_mode: Language mode preference
+        
+    Returns:
+        Dictionary with sentiment and troll information
+    """
+    # Get standard sentiment analysis with language preference
+    sentiment = analyze_sentiment_with_language_preference(text, language_mode)
+    
+    # Get troll analysis
+    troll_analysis = analyze_for_trolling(text)
+    
+    # Format result as: "Sentiment (score) [TROLL]" if it's a troll
+    result = sentiment
+    if troll_analysis['is_troll']:
+        # Extract the existing sentiment part
+        sentiment_part = sentiment.split(' (')[0]
+        score_part = sentiment.split('(')[1]
+        
+        # Add the troll marker
+        result = f"{sentiment_part} (TROLL) ({score_part}"
+    
+    return {
+        'sentiment_text': result,
+        'is_troll': troll_analysis['is_troll'],
+        'troll_score': troll_analysis['troll_score'],
+        'language': troll_analysis['language']
+    }
+
 
 def get_sentiment_breakdown_with_language(text, language_mode=None):
     """
@@ -439,18 +472,9 @@ def plot_sentiment_distribution(df, sentiment_column):
     
     # Create plot
     fig, ax = plt.subplots(figsize=(10, 5))
-    colors = {
-        'Positive': 'green', 
-        'Negative': 'red', 
-        'Neutral': 'gray',
-        'Troll': 'purple'  # Distinct color for trolls
-    }
+    colors = {'Positive': 'green', 'Negative': 'red', 'Neutral': 'gray', 'Troll': 'purple'}
     
-    # Create bar plot with custom colors
-    bars = sns.barplot(x=counts.index, y=counts.values, 
-                      palette=[colors.get(cat, 'blue') for cat in counts.index], 
-                      ax=ax)
-    
+    sns.barplot(x=counts.index, y=counts.values, palette=[colors.get(cat, 'blue') for cat in counts.index], ax=ax)
     ax.set_title('Sentiment Distribution')
     ax.set_ylabel('Count')
     ax.set_xlabel('Sentiment')
@@ -584,6 +608,13 @@ This application now supports sentiment analysis for:
 - Code-switching (mix of English and Tagalog)
 - Regional Filipino dialects (Bisaya, Ilokano, Bikolano, etc.)
 - Social media slang and TikTok-specific expressions in Tagalog
+
+The application now features troll detection capabilities:
+- Identifies comments with troll-like behavior patterns
+- Analyzes language patterns specific to trolling
+- Detects excessive punctuation, ALL CAPS, and inflammatory language
+- Provides a troll score for each comment
+- Specialized detection for Filipino/Taglish troll comments
 
 You can set your language preference in the sidebar under "Language Settings".
 """
@@ -818,7 +849,7 @@ elif page == "Upload Data":
                         "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                         "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                         "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                        "Troll Comments": len(comments_df[comments_df['Is Troll'] == True]),
+                        "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                         "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                     }
                     
@@ -903,13 +934,6 @@ elif page == "Fetch TikTok Comments":
                             comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
                             comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
-                        
-                        # Apply troll detection
-                        troll_results = comments_df['Comment'].apply(
-                            lambda text: analyze_for_trolling(text)
-                        )
-                        comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
-                        comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                     
                     # Create tabs for different views
                     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -1005,23 +1029,6 @@ elif page == "Fetch TikTok Comments":
                             st.pyplot(fig)
                         else:
                             st.info("No emojis found in the comments.")
-                        
-                        # Troll visualization
-                        st.subheader("Troll Comment Distribution")
-                        troll_counts = comments_df['Is Troll'].value_counts()
-                        fig, ax = plt.subplots(figsize=(10, 5))
-                        colors = ['red', 'green']
-                        sns.barplot(x=['Troll', 'Not Troll'], 
-                                   y=[troll_counts.get(True, 0), troll_counts.get(False, 0)], 
-                                   palette=colors, ax=ax)
-                        ax.set_title('Troll vs. Normal Comments')
-                        ax.set_ylabel('Count')
-                        total = len(comments_df)
-                        troll_pct = 100 * troll_counts.get(True, 0) / total
-                        normal_pct = 100 * troll_counts.get(False, 0) / total
-                        ax.text(0, troll_counts.get(True, 0) + 5, f'{troll_pct:.1f}%', ha='center')
-                        ax.text(1, troll_counts.get(False, 0) + 5, f'{normal_pct:.1f}%', ha='center')
-                        st.pyplot(fig)
                     
                     with tab3:
                         # Sentiment Analysis Comparison
@@ -1068,7 +1075,7 @@ elif page == "Fetch TikTok Comments":
                             "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                             "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                             "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                            "Troll Comments": len(comments_df[comments_df['Is Troll'] == True]),
+                            "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                             "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                         }
                         
@@ -1185,4 +1192,3 @@ elif page == "Sentiment Explorer":
 if __name__ == "__main__":
     # This ensures the app runs properly when executed directly
     pass
-    
