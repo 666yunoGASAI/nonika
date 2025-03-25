@@ -31,13 +31,6 @@ import plotly.graph_objects as go
 import io
 import csv
 import chardet  # You may need to pip install chardet
-from market_trend_analysis import (
-    calculate_market_trend_score,
-    plot_market_prediction,
-    predict_purchase_volume,
-    generate_market_trend_report,
-    add_market_trends_tab
-)
 
 troll_detector = TrollDetector()
 
@@ -126,15 +119,21 @@ def analyze_comment_with_trolling(text, language_mode=None):
     Returns:
         Dictionary with sentiment and troll information
     """
-    # Get troll analysis first
+    # Get standard sentiment analysis with language preference
+    sentiment = analyze_sentiment_with_language_preference(text, language_mode)
+    
+    # Get troll analysis
     troll_analysis = analyze_for_trolling(text)
     
-    # If it's a troll, mark it as such regardless of sentiment
+    # Format result as: "Sentiment (score) [TROLL]" if it's a troll
+    result = sentiment
     if troll_analysis['is_troll']:
-        result = "Troll (1.00)"  # Mark as Troll with high confidence
-    else:
-        # Only get sentiment analysis if not a troll
-        result = analyze_sentiment_with_language_preference(text, language_mode)
+        # Extract the existing sentiment part
+        sentiment_part = sentiment.split(' (')[0]
+        score_part = sentiment.split('(')[1]
+        
+        # Add the troll marker
+        result = f"{sentiment_part} (TROLL) ({score_part}"
     
     return {
         'sentiment_text': result,
@@ -459,26 +458,16 @@ def create_wordcloud(text_series):
 def plot_sentiment_distribution(df, sentiment_column):
     """Create a bar chart of sentiment distribution."""
     # Extract sentiment categories without scores
-    # Updated to handle TROLL marker in sentiment text
-    categories = df[sentiment_column].apply(lambda x: 'Troll' if 'TROLL' in x else x.split(' ')[0])
+    categories = df[sentiment_column].apply(lambda x: x.split(' ')[0])
     
     # Count occurrences
     counts = categories.value_counts()
     
     # Create plot
     fig, ax = plt.subplots(figsize=(10, 5))
-    colors = {
-        'Positive': 'green', 
-        'Negative': 'red', 
-        'Neutral': 'gray',
-        'Troll': 'purple'  # Distinct color for trolls
-    }
+    colors = {'Positive': 'green', 'Negative': 'red', 'Neutral': 'gray', 'Troll': 'purple'}
     
-    # Create bar plot with custom colors
-    bars = sns.barplot(x=counts.index, y=counts.values, 
-                      palette=[colors.get(cat, 'blue') for cat in counts.index], 
-                      ax=ax)
-    
+    sns.barplot(x=counts.index, y=counts.values, palette=[colors.get(cat, 'blue') for cat in counts.index], ax=ax)
     ax.set_title('Sentiment Distribution')
     ax.set_ylabel('Count')
     ax.set_xlabel('Sentiment')
@@ -853,7 +842,7 @@ elif page == "Upload Data":
                         "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                         "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                         "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                        "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('TROLL')]),
+                        "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                         "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                     }
                     
@@ -1079,7 +1068,7 @@ elif page == "Fetch TikTok Comments":
                             "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                             "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                             "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                            "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('TROLL')]),
+                            "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                             "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                         }
                         
