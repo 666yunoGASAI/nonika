@@ -1185,3 +1185,4 @@ elif page == "Sentiment Explorer":
 if __name__ == "__main__":
     # This ensures the app runs properly when executed directly
     pass
+    
