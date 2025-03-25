@@ -433,7 +433,12 @@ def plot_sentiment_distribution(df, sentiment_column):
     
     # Create plot
     fig, ax = plt.subplots(figsize=(10, 5))
-    colors = {'Positive': 'green', 'Negative': 'red', 'Neutral': 'gray'}
+    colors = {
+        'Positive': 'green', 
+        'Negative': 'red', 
+        'Neutral': 'gray',
+        'Troll': 'purple'  # Add color for troll category
+    }
     
     sns.barplot(x=counts.index, y=counts.values, palette=[colors.get(cat, 'blue') for cat in counts.index], ax=ax)
     ax.set_title('Sentiment Distribution')
@@ -788,9 +793,6 @@ elif page == "Upload Data":
                     st.subheader("Comment Statistics")
                     
                     # Basic stats
-
-                    
-                    # Basic stats
                     stats = {
                         "Total Comments": len(comments_df),
                         "Average Comment Length": int(comments_df['Comment'].apply(len).mean()),
@@ -798,18 +800,20 @@ elif page == "Upload Data":
                         "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                         "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                         "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
+                        "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                         "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                     }
                     
                     # Display stats in columns
-                    col1, col2, col3 = st.columns(3)
+                    col1, col2, col3, col4 = st.columns(4)
                     col1.metric("Total Comments", stats["Total Comments"])
                     col1.metric("Average Length", stats["Average Comment Length"])
                     col2.metric("Positive Comments", stats["Positive Comments"])
                     col2.metric("Negative Comments", stats["Negative Comments"])
                     col3.metric("Neutral Comments", stats["Neutral Comments"])
-                    col3.metric("Comments with Emojis", stats["Comments with Emojis"])
-                    col1.metric("Tagalog Comments", stats["Tagalog Comments"])
+                    col3.metric("Troll Comments", stats["Troll Comments"])
+                    col4.metric("Comments with Emojis", stats["Comments with Emojis"])
+                    col4.metric("Tagalog Comments", stats["Tagalog Comments"])
                     
                     # Hashtag analysis
                     st.subheader("Hashtag Analysis")
@@ -1019,18 +1023,20 @@ elif page == "Fetch TikTok Comments":
                             "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                             "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                             "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
+                            "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                             "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                         }
                         
                         # Display stats in columns
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2, col3, col4 = st.columns(4)
                         col1.metric("Total Comments", stats["Total Comments"])
                         col1.metric("Average Length", stats["Average Comment Length"])
                         col2.metric("Positive Comments", stats["Positive Comments"])
                         col2.metric("Negative Comments", stats["Negative Comments"])
                         col3.metric("Neutral Comments", stats["Neutral Comments"])
-                        col3.metric("Comments with Emojis", stats["Comments with Emojis"])
-                        col1.metric("Tagalog Comments", stats["Tagalog Comments"])
+                        col3.metric("Troll Comments", stats["Troll Comments"])
+                        col4.metric("Comments with Emojis", stats["Comments with Emojis"])
+                        col4.metric("Tagalog Comments", stats["Tagalog Comments"])
                         
                         # Hashtag analysis
                         st.subheader("Hashtag Analysis")
