@@ -437,10 +437,14 @@ def plot_sentiment_distribution(df, sentiment_column):
         'Positive': 'green', 
         'Negative': 'red', 
         'Neutral': 'gray',
-        'Troll': 'purple'  # Add color for troll category
+        'Troll': 'purple'  # Distinct color for trolls
     }
     
-    sns.barplot(x=counts.index, y=counts.values, palette=[colors.get(cat, 'blue') for cat in counts.index], ax=ax)
+    # Create bar plot with custom colors
+    bars = sns.barplot(x=counts.index, y=counts.values, 
+                      palette=[colors.get(cat, 'blue') for cat in counts.index], 
+                      ax=ax)
+    
     ax.set_title('Sentiment Distribution')
     ax.set_ylabel('Count')
     ax.set_xlabel('Sentiment')
@@ -450,6 +454,11 @@ def plot_sentiment_distribution(df, sentiment_column):
     for i, count in enumerate(counts):
         percentage = 100 * count / total
         ax.text(i, count + 5, f'{percentage:.1f}%', ha='center')
+    
+    # Add legend
+    legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color, label=cat) 
+                      for cat, color in colors.items() if cat in counts.index]
+    ax.legend(handles=legend_elements)
     
     return fig
 
@@ -466,9 +475,9 @@ def create_sentiment_heatmap(df):
     for col in required_columns:
         sentiment_matrix[col] = df[col].apply(lambda x: x.split(' ')[0])
     
-    # Calculate agreement matrix
-    agreement_matrix = pd.DataFrame(index=['Positive', 'Neutral', 'Negative'], 
-                                  columns=['Positive', 'Neutral', 'Negative'])
+    # Calculate agreement matrix - now including Troll category
+    agreement_matrix = pd.DataFrame(index=['Positive', 'Neutral', 'Negative', 'Troll'], 
+                                  columns=['Positive', 'Neutral', 'Negative', 'Troll'])
     
     # Fill the matrix with zeros
     agreement_matrix = agreement_matrix.fillna(0)
@@ -696,7 +705,7 @@ elif page == "Upload Data":
 
                     # Let user choose new sentiment
                     corrected_sentiment = st.radio("Correct sentiment:", 
-                                                  options=["Positive", "Neutral", "Negative"])
+                                                  options=["Positive", "Neutral", "Negative", "Troll"])
 
                     if st.button("Save Correction"):
                         # Save the corrected sentiment with a confidence of 1.0 (manual label)
@@ -915,7 +924,7 @@ elif page == "Fetch TikTok Comments":
 
                         # Let user choose new sentiment
                         corrected_sentiment = st.radio("Correct sentiment:", 
-                                                      options=["Positive", "Neutral", "Negative"])
+                                                      options=["Positive", "Neutral", "Negative", "Troll"])
 
                         if st.button("Save Correction"):
                             # Save the corrected sentiment with a confidence of 1.0 (manual label)
