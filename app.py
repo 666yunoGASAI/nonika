@@ -697,9 +697,9 @@ elif page == "Upload Data":
 
                     # Store results in COMPLETELY separate columns
                     comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
-                    # STRONGER CLEANING - Use regex to remove any form of (TROLL) with variable spacing
-                    comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].apply(
-                        lambda x: re.sub(r'\s*\(\s*TROLL\s*\)\s*', '', str(x)) if isinstance(x, str) else x
+                    # COMPLETE OVERRIDE - Clean the Enhanced Sentiment at the source
+                    comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].astype(str).apply(
+                        lambda x: re.sub(r'\s*\(\s*TROLL\s*\)\s*', '', x)
                     )
                     comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
                     comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
@@ -710,6 +710,11 @@ elif page == "Upload Data":
 
                 # Add this right after setting Enhanced Sentiment
                 st.write("Sample Enhanced Sentiment:", comments_df['Enhanced Sentiment'].iloc[0] if len(comments_df) > 0 else "No data")
+                
+                # Add this for debugging
+                st.write("### Raw sentiment values before cleaning")
+                sample_values = comments_df['Enhanced Sentiment'].head(5).tolist()
+                st.write(sample_values)
                 
                 # Create tabs for different views
                 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -733,10 +738,14 @@ elif page == "Upload Data":
                         display_df = pd.DataFrame()
                         display_df['Comment'] = comments_df['Comment']
                         
-                        # Manually create sentiment display string without using Enhanced Sentiment
-                        display_df['Sentiment'] = comments_df.apply(
-                            lambda row: f"{'Positive' if row['Enhanced Score'] > 0.05 else 'Negative' if row['Enhanced Score'] < -0.05 else 'Neutral'} ({row['Enhanced Score']:.2f})" + 
-                            (f" 🚨" if row['Is_Troll'] else ""), 
+                        # NUCLEAR OPTION - Create a completely new sentiment column from scores only
+                        display_df['Clean_Sentiment'] = comments_df['Enhanced Score'].apply(
+                            lambda score: "Positive" if score > 0.05 else "Negative" if score < -0.05 else "Neutral"
+                        )
+                        
+                        # Use the clean column for display
+                        display_df['Formatted Sentiment'] = display_df.apply(
+                            lambda row: f"{comments_df.loc[row.name, 'Clean_Sentiment']} ({comments_df.loc[row.name, 'Enhanced Score']:.2f})", 
                             axis=1
                         )
                         
@@ -1104,9 +1113,9 @@ elif page == "Fetch TikTok Comments":
 
                         # Store results in COMPLETELY separate columns
                         comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
-                        # STRONGER CLEANING - Use regex to remove any form of (TROLL) with variable spacing
-                        comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].apply(
-                            lambda x: re.sub(r'\s*\(\s*TROLL\s*\)\s*', '', str(x)) if isinstance(x, str) else x
+                        # COMPLETE OVERRIDE - Clean the Enhanced Sentiment at the source
+                        comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].astype(str).apply(
+                            lambda x: re.sub(r'\s*\(\s*TROLL\s*\)\s*', '', x)
                         )
                         comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
                         comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
@@ -1117,6 +1126,11 @@ elif page == "Fetch TikTok Comments":
 
                     # Add this right after setting Enhanced Sentiment
                     st.write("Sample Enhanced Sentiment:", comments_df['Enhanced Sentiment'].iloc[0] if len(comments_df) > 0 else "No data")
+                    
+                    # Add this for debugging
+                    st.write("### Raw sentiment values before cleaning")
+                    sample_values = comments_df['Enhanced Sentiment'].head(5).tolist()
+                    st.write(sample_values)
                     
                     # Create tabs for different views
                     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -1140,10 +1154,14 @@ elif page == "Fetch TikTok Comments":
                             display_df = pd.DataFrame()
                             display_df['Comment'] = comments_df['Comment']
                             
-                            # Manually create sentiment display string without using Enhanced Sentiment
-                            display_df['Sentiment'] = comments_df.apply(
-                                lambda row: f"{'Positive' if row['Enhanced Score'] > 0.05 else 'Negative' if row['Enhanced Score'] < -0.05 else 'Neutral'} ({row['Enhanced Score']:.2f})" + 
-                                (f" 🚨" if row['Is_Troll'] else ""), 
+                            # NUCLEAR OPTION - Create a completely new sentiment column from scores only
+                            display_df['Clean_Sentiment'] = comments_df['Enhanced Score'].apply(
+                                lambda score: "Positive" if score > 0.05 else "Negative" if score < -0.05 else "Neutral"
+                            )
+                            
+                            # Use the clean column for display
+                            display_df['Formatted Sentiment'] = display_df.apply(
+                                lambda row: f"{comments_df.loc[row.name, 'Clean_Sentiment']} ({comments_df.loc[row.name, 'Enhanced Score']:.2f})", 
                                 axis=1
                             )
                             
