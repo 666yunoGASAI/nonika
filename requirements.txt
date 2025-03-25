@@ -1,0 +1,12 @@
+streamlit
+pandas
+emoji==2.14.1
+nltk
+scikit-learn
+wordcloud
+plotly
+matplotlib
+seaborn
+python-dotenv
+chardet
+apify-client
