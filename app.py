@@ -10,7 +10,7 @@ from sentiment_analysis import (
     enhanced_sentiment_analysis,
     get_sentiment_breakdown
 )
-from sentiment_test import ensemble_sentiment_analysis
+from sentiment_analysis import ensemble_sentiment_analysis
 # Import Tagalog sentiment functions
 from tagalog_sentiment import (
     is_tagalog,
