@@ -137,10 +137,10 @@ def analyze_comment_with_trolling(text, language_mode=None):
     base_sentiment = sentiment_parts[0]
     score = float(sentiment_parts[1].rstrip(')'))  # Convert score to float
     
-    # Return sentiment and troll information separately
+    # Return sentiment and troll information completely separately
     return {
-        'sentiment_type': base_sentiment,  # Changed from sentiment_text
-        'sentiment_score': score,  # Added separate score
+        'sentiment_type': base_sentiment,  # Just the sentiment type (Positive/Negative/Neutral)
+        'sentiment_score': score,          # Just the numerical score
         'is_troll': troll_analysis['is_troll'],
         'troll_score': troll_analysis['troll_score']
     }
