@@ -132,18 +132,9 @@ def analyze_comment_with_trolling(text, language_mode=None):
     # Get troll analysis
     troll_analysis = analyze_for_trolling(text)
     
-    # Format result as: "Sentiment (score) [TROLL]" if it's a troll
-    result = sentiment
-    if troll_analysis['is_troll']:
-        # Extract the existing sentiment part
-        sentiment_part = sentiment.split(' (')[0]
-        score_part = sentiment.split('(')[1]
-        
-        # Add the troll marker
-        result = f"{sentiment_part} (TROLL) ({score_part}"
-    
+    # Return sentiment and troll information separately without modifying the sentiment text
     return {
-        'sentiment_text': result,
+        'sentiment_text': sentiment,  # Keep original sentiment without modification
         'is_troll': troll_analysis['is_troll'],
         'troll_score': troll_analysis['troll_score'],
         'language': troll_analysis['language']
@@ -710,8 +701,8 @@ elif page == "Upload Data":
                         lambda text: analyze_comment_with_trolling(text, language_mode)
                     )
 
-                    # Store sentiment and troll results separately
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' (')[0] + ' (' + x['sentiment_text'].split('(')[1])  # Keep only sentiment part
+                    # Store sentiment and troll results separately - keep original sentiment text
+                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])  # Keep original sentiment
                     comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                 
@@ -974,8 +965,8 @@ elif page == "Fetch TikTok Comments":
                                 lambda text: analyze_comment_with_trolling(text, language_mode)
                             )
 
-                            # Store sentiment and troll results separately
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' (')[0] + ' (' + x['sentiment_text'].split('(')[1])  # Keep only sentiment part
+                            # Store sentiment and troll results separately - keep original sentiment text
+                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])  # Keep original sentiment
                             comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                     
