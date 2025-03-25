@@ -12,3 +12,4 @@ chardet
 apify-client
 joblib
 pytest
+langdetect
