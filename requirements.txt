@@ -11,3 +11,4 @@ python-dotenv
 chardet
 apify-client
 joblib
+pytest
