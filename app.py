@@ -94,9 +94,17 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
     
     if language_mode == "Auto-detect":
         if is_tagalog(text):
-            return tagalog_enhanced_sentiment_analysis(text)
+            # Get sentiment only without troll label
+            result = tagalog_enhanced_sentiment_analysis(text)
+            # Remove any troll labels if present
+            result = result.split(' (TROLL)')[0] if ' (TROLL)' in result else result
+            return result
         else:
-            return enhanced_sentiment_analysis(text)
+            # Get sentiment only without troll label
+            result = enhanced_sentiment_analysis(text)
+            # Remove any troll labels if present
+            result = result.split(' (TROLL)')[0] if ' (TROLL)' in result else result
+            return result
     elif language_mode == "English Only":
         return enhanced_sentiment_analysis(text)
     elif language_mode == "Tagalog Only":
@@ -705,7 +713,9 @@ elif page == "Upload Data":
                         
                         # Create a formatted display column that shows ONLY sentiment and score
                         enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
-                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
+                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})"
+                            if not comments_df.loc[row.name, 'Is_Troll'] else
+                            f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
                             axis=1
                         )
                         
@@ -1098,7 +1108,9 @@ elif page == "Fetch TikTok Comments":
                             
                             # Create a formatted display column that shows ONLY sentiment and score
                             enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
-                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
+                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})"
+                                if not comments_df.loc[row.name, 'Is_Troll'] else
+                                f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
                                 axis=1
                             )
                             
