@@ -15,8 +15,6 @@ import emoji
 import joblib
 import os
 from pathlib import Path
-import langdetect
-from langdetect import detect
 
 # Download required NLTK resources if not already present
 try:
@@ -74,387 +72,8 @@ TIKTOK_LEXICON = {
     'cursed': -0.6, 'clout chasing': -0.7, 'fake': -0.7, 'fraud': -0.8, 'scam': -0.8,
     'disappointing': -0.7, 'trash': -0.8, 'nightmare': -0.7, 'unfollow': -0.6, 'worst': -0.8,
     'shadowban': -0.7, 'shadow ban': -0.7, 'triggered': -0.5, 'cancelled': -0.7,
-    'flopped': -0.8, 'overrated': -0.6, 'boring': -0.6, 'annoying': -0.7, 'wtf': -0.6,
-    
-    
-    # Negative product-specific terms
-    'defective': -0.8, 'sira': -0.8, 'broken': -0.8, 'not working': -0.8, 
-    'budol': -0.9, 'peke': -0.8, 'counterfeit': -0.8, 'knockoff': -0.8,
-    'overpriced': -0.7, 'mahal': -0.6, 'sobrang mahal': -0.8, 'not worth it': -0.7, 
-    'hindi sulit': -0.7, 'sayang': -0.7, 'waste': -0.8, 'regret': -0.8,
-    'misleading': -0.7, 'false advertising': -0.8, 'refund': -0.5, 'return': -0.5,
-    'terrible': -0.8, 'avoid': -0.7, 'stay away': -0.8, 'pangit': -0.7,
-    'marupok': -0.7, 'madaling masira': -0.8, 'walang kwenta': -0.8, 'useless': -0.8,
-    'expired': -0.8, 'expiry': -0.7, 'arrived damaged': -0.8, 'doa': -0.8,
-    'not as described': -0.7, 'hindi kapareho': -0.7, 'catfishing': -0.8,
-    
-    # Shopping platform specific terms
-    'shopee scam': -0.9, 'lazada scam': -0.9, 'tiktok shop scam': -0.9,
-    'shopee budol': -0.8, 'lazada budol': -0.8, 'tiktok shop budol': -0.8,
-    'cod scam': -0.9, 'cash on delivery scam': -0.9,
-    'seller ghosted': -0.8, 'hindi nagrereply': -0.7, 'no response': -0.7,
-    'cancellation': -0.6, 'cancelled order': -0.6, 'delayed shipping': -0.6,
-    
-    # Positive product-specific terms
-    'sulit': 0.7, 'worth it': 0.7, 'quality': 0.7, 'excellent': 0.8, 'legit': 0.8,
-    'authentic': 0.7, 'original': 0.7, 'recommended': 0.7, 'mura': 0.6, 'affordable': 0.6,
-    'fast delivery': 0.7, 'mabilis dumating': 0.7, 'responsive seller': 0.7,
-    'generous seller': 0.7, 'exceeded expectations': 0.8, 'free gift': 0.6,
-    'good packaging': 0.6, 'secure packaging': 0.6, 'well packed': 0.6
+    'flopped': -0.8, 'overrated': -0.6, 'boring': -0.6, 'annoying': -0.7, 'wtf': -0.6
 }
-FILIPINO_LEXICON = {
-    # Positive Filipino/Taglish words
-    'ganda': 0.7, 'astig': 0.8, 'galing': 0.8, 'maganda': 0.7,
-    'husay': 0.7, 'ang galing': 0.8, 'ang cute': 0.7, 'ang ganda': 0.8,
-    'idol': 0.7, 'petmalu': 0.8, 'lodi': 0.7, 'solid': 0.7, 'lupet': 0.8,
-    'panalo': 0.8, 'sana all': 0.6, 'nakakatuwa': 0.7, 'bongga': 0.7,
-    
-    # Negative Filipino/Taglish words
-    'panget': -0.7, 'pangit': -0.7, 'chaka': -0.7, 'nakakabwisit': -0.8,
-    'basura': -0.8, 'bastos': -0.7, 'walang kwenta': -0.8, 'epal': -0.7,
-    'tanga': -0.8, 'bobo': -0.8, 'tae': -0.7, 'gago': -0.8, 'gaga': -0.8,
-    'ulol': -0.8, 'pakyu': -0.9, 'bwisit': -0.7, 'nakakaasar': -0.7,
-    'kadiri': -0.7, 'bulok': -0.7, 'tarantado': -0.8, 'pokpok': -0.8,
-    
-    # Filipino troll/bait words (common on TikTok)
-    'lutang': -0.7, 'lenlen': -0.7, 'dilawan': -0.6, 'pinklawan': -0.6, 
-    'yellowtard': -0.7, 'kulto': -0.8, 'bayaran': -0.7, 'paid': -0.6,
-    'troll': -0.7, 'fake news': -0.7, 'apologist': -0.6, 'fanatic': -0.6,
-
-        # Add more negative/troll Filipino words
-    'engot': -0.7, 'inutil': -0.7, 'gunggong': -0.8, 'hangal': -0.7, 
-    'ungas': -0.8, 'ugok': -0.7, 'ulol': -0.8, 'abnormal': -0.7,
-    'baliw': -0.7, 'sira ulo': -0.8, 'sinungaling': -0.7, 'budol': -0.7,
-    'balimbing': -0.6, 'traydor': -0.7, 'duwag': -0.7, 'takot': -0.5,
-    'manahimik ka': -0.7, 'tumahimik ka': -0.7, 'tumigil ka': -0.7,
-    'magsara': -0.6, 'umalis': -0.5, 'pabebe': -0.6, 'feeling': -0.6,
-    'epal': -0.7, 'attention': -0.5, 'papansin': -0.6, 'praning': -0.6,
-    'plastik': -0.7, 'fake': -0.7, 'peke': -0.7, 'poser': -0.6,
-    
-    # Additional political troll terms
-    'bobotante': -0.8, 'abnoy': -0.8, 'lugaw': -0.7, 'laylayan': -0.6,
-    'gurang': -0.7, 'matanda': -0.6, 'luka-luka': -0.7, 'oligarch': -0.7,
-    'elitista': -0.7, 'tuta': -0.8, 'sundalong kanin': -0.7,
-    'puppet': -0.7, 'diktador': -0.7, 'magnanakaw': -0.8, 'adik': -0.7,
-    'drugas': -0.7, 'addict': -0.7, 'korap': -0.8, 'corrupt': -0.8,
-    
-    # Sarcastic terms often used in trolling
-    'maka diyos': -0.5, 'disente': -0.5, 'itong': -0.4, 'heto': -0.4,
-    'talaga naman': -0.5, 'asa pa': -0.6, 'good luck': -0.5, 'lmao': -0.6,
-    'tatawa': -0.4, 'natawa': -0.5, 'patawa': -0.5, 'aliw': -0.4,
-    'naaliw': -0.5, 'pinapatawa': -0.5, 'katatawa': -0.5
-
-    
-}
-
-TROLL_PATTERNS = [
-    # Basic patterns
-    r'(ha){3,}',              # hahaha patterns
-    r'(he){3,}',              # hehehe patterns
-    r'!!+',                   # multiple exclamation marks
-    r'\?\?+',                 # multiple question marks - fixed to escape ?
-    r'[A-Z]{3,}',             # ALL CAPS WORDS
-    r'\.{3,}',                # multiple periods (ellipsis)
-    r'😂{2,}',                # multiple laughing emojis
-    r'🤡|💀|🫠|💩',           # emojis commonly used in trolling
-    r'(lutang|bobo|tanga)\s*(ka|talaga|naman)', # common insults 
-    r'(\w+)(?:(?:\s+\1){2,})',  # repeated words (e.g., "galing galing galing")
-    r'respect\s*my\s*opinion',  # common troll defense
-    
-    # Additional patterns - with fixes
-    r'#(bbm|sara|leni|kakampink|pinklawan|dilawan|duterte|dutz|marcos)',  # Political hashtags
-    r'(bbm|marcos|duterte|dutz|leni|lugaw|lutang)\s*pa\s*more',  # Political trolling phrase
-    r'(bobo|tanga|gago)\s*(ka\s*ba|naman|talaga|amp)',  # Enhanced insult patterns  
-    r'(haha|hihi|huhu|hehe){2,}',  # Repeated laugh patterns (hahahaha, etc)
-    r'\?{2,}',                  # Fixed question mark patterns in Filipino comments
-    r'(\s*ha){3,}',            # Enhanced "ha ha ha" pattern
-    r'(\s*eh){3,}',            # "eh eh eh" pattern
-    r'(naman){2,}',            # Repeated "naman"
-    r'(edi\s*wow|edi\s*ikaw\s*na)',  # Sarcastic expressions
-    r'(dami\s*alam|dami\s*satsat)',  # Dismissive phrases
-    r'(feeling|filang)\s*(expert|galing|maganda|pogi|matalino)',  # Sarcastic compliment
-    r'(ayaw|gusto|trip)\s*ko\s*yan[!]+',  # Exaggerated statements
-    r'(fake|imbento|gawa-gawa|kasinungalingan)\s*(news|yan)',  # Fake news accusations
-    r'(delawan|dilawan|yellowtard|pinklawan)',  # Political faction insults
-    r'(paid|bayad|bayaran)',  # Paid troll accusations
-    r'(communist|komunista|npa|terorista)',  # Political labeling
-    r'(wala\s*kang\s*alam|wala\s*kang\s*karapatan)',  # Dismissive statements
-    r'(kabobohan|katangahan|kaululan)',  # Name-calling
-    r'\b(ok|sige|sure)\s*na\s*yan\s*for\s*you',  # Dismissive agreement
-    r'#(tiktokfamous|viralvideo|foryoupage|fyp)',  # Hashtag baiting
-        # Product-specific troll patterns
-    r'(fake|peke|scam|budol|lokohan|manloloko)\s*(product|item|seller)',  # Fake product accusations
-    r'(over|sobrang)\s*(priced|mahal)',  # Overpriced complaints
-    r'(don\'t|wag|huwag)\s*(buy|order|bilhin)',  # Discouraging purchases
-    r'(waste|sayang)\s*(of|ng)\s*(money|pera)',  # Money waste claims
-    r'(worst|pinakamasamang)\s*(purchase|bili|product)',  # Extreme negative claims
-    r'(returns?|refunds?)\s*(denied|rejected|hindi)',  # Return/refund complaints
-    r'(buyer|customer)\s*(beware|ingat)',  # Warning other customers
-    r'(marketing|ad|advertisement)\s*(scam|lie|kasinungalingan)',  # Marketing dishonesty claims
-    r'(not|hindi)\s*(worth|sulit)',  # Value complaints
-    r'(broken|sira|defective)\s*(on|upon|pagka)\s*(arrival|dating|deliver)',  # DOA claims
-    
-    # Exaggerated reviews
-    r'(never|hindi\s*na\s*ulit)\s*(buying|bibili)',  # Never buying again
-    r'(regret|nagsisisi)\s*(buying|purchase)',  # Purchase regret
-    r'(0|zero)\s*(stars|rating)',  # Zero rating claims
-    r'(this|ito)\s*(ain\'t|hindi)\s*(it|maganda|okay)',  # Dismissive language
-    
-    # Suspicious behavior patterns
-    r'(all|lahat\s*ng)\s*(reviews|ratings|comments)\s*(fake|peke|paid|bayad)',  # Fake review accusations
-    r'(shop|store)\s*(paying|nagbabayad)\s*for\s*(good|positive|5\s*star)',  # Paid review accusations
-    r'(daming|andaming|ang\s*dami\s*ng)\s*(tanga|bobo|uto-uto)',  # Insulting other customers
-    r'(obvious|halatang)\s*(paid|bayad)',  # Calling out paid endorsements
-    
-    # Specific product claim patterns
-    r'(expired|expiry|lumang)\s*(product|item)',  # Expired products
-    r'(fake|peke|counterfeit|pirated|class\s*[a-z])',  # Counterfeit accusations
-    r'(factory|manufacturer)\s*(defect|reject)',  # Factory defects
-    r'(not|hindi)\s*(authentic|original|tunay)',  # Authenticity questions
-    r'(expectations)\s*vs\s*(reality)',  # Expectation vs reality
-    r'(order|expectation)\s*vs\s*(received|reality)',  # Order vs received
-    
-    # Mocking patterns
-    r'(laughing|tumawa|natawa)\s*so\s*(hard|much)',  # Mocking reactions
-    r'(clown|circus|joke)\s*(emoji|face)?',  # Calling product/seller a joke
-    r'(imagine|isipin)\s*(paying|nagbayad)',  # Mocking buyers
-    
-    # Extreme comparison claims
-    r'(better|mas\s*maganda)\s*(off|pa)\s*(buying|bumili)',  # Better off elsewhere claims
-    r'(local|china|chinese)\s*(products|alternatives)\s*(better|mas\s*maganda)',  # Comparison to alternatives
-    r'(could|pwede)\s*(have|sana)\s*(bought|bumili)',  # Regret comparisons
-    
-    # General catastrophizing
-    r'(worst|pinaka\s*malala|pinakamasamang)\s*(product|experience)',  # Extreme negative statements
-    r'(completely|totally|absolutely)\s*(useless|worthless|walang\s*kwenta)',  # Extreme uselessness claims
-    r'(biggest|pinakamalaking)\s*(mistake|regret)',  # Extreme regret claims
-    
-    # Filipino-specific patterns
-    r'(budol|na-budol|nabudol)',  # Scammed
-    r'(sayang|nasayang)\s*(pera|money|funds)',  # Wasted money
-    r'(lubog|nilubog|nilubog)\s*(pera|money)',  # Sunken cost
-    r'(pinagkakitaan|kita|kumikita)\s*(lang)',  # Just for profit
-    r'(puro|pure)\s*(kalokohan|pangako|promises)',  # Empty promises
-    r'(panloloko|manloloko|pangloloko)',  # Deception terms
-]
-def validate_regex_patterns(patterns):
-    """
-    Validates a list of regex patterns and returns only those that compile successfully.
-    
-    Args:
-        patterns: List of regex pattern strings
-        
-    Returns:
-        List of valid regex patterns
-    """
-    valid_patterns = []
-    for i, pattern in enumerate(patterns):
-        try:
-            re.compile(pattern)
-            valid_patterns.append(pattern)
-        except re.error as e:
-            print(f"Invalid regex pattern #{i}: '{pattern}'")
-            print(f"Error: {e}")
-            # Either skip the pattern or try to fix it
-            # Here we'll skip it for safety
-    
-    return valid_patterns
-# Function to detect language
-def detect_language(text):
-    """
-    Detect if text is Tagalog, English, or Taglish (mixed).
-    Returns 'tl' for Tagalog, 'en' for English, 'mixed' for Taglish, or 'unknown'.
-    """
-    if not isinstance(text, str) or not text:
-        return 'unknown'
-    
-    # Common Filipino markers that help identify Tagalog/Taglish
-    filipino_markers = ['ang', 'ng', 'mga', 'sa', 'ko', 'mo', 'ka', 'naman', 'po',
-                        'na', 'ay', 'yung', 'ito', 'yan', 'siya', 'ikaw', 'ako']
-    
-    # Count Filipino marker words
-    words = text.lower().split()
-    filipino_word_count = sum(1 for word in words if word in filipino_markers)
-    filipino_lexicon_words = sum(1 for word in words if word in FILIPINO_LEXICON)
-    
-    # If significant Filipino markers are found
-    if filipino_word_count >= 2 or filipino_lexicon_words >= 2:
-        # Simple check for English words
-        english_markers = ['the', 'of', 'and', 'to', 'is', 'in', 'it', 'you', 'that']
-        english_count = sum(1 for word in words if word in english_markers)
-        
-        if english_count >= 2:
-            return 'mixed'  # Likely Taglish
-        else:
-            return 'tl'     # Likely Filipino/Tagalog
-    
-    # Try standard language detection (this can be error-prone for short texts)
-    try:
-        return detect(text)
-    except:
-        # If language detection fails
-        return 'unknown'
-    
-    # Function to detect troll patterns
-def detect_troll_patterns(text):
-    """
-    Detect patterns commonly found in troll comments.
-    Returns a score from 0 (not troll-like) to 1 (highly troll-like).
-    """
-    if not isinstance(text, str) or not text:
-        return 0.0
-    
-    # Initialize score
-    troll_score = 0.0
-    
-    # Check for pattern matches
-    pattern_matches = 0
-    for pattern in TROLL_PATTERNS:
-        if re.search(pattern, text, re.IGNORECASE):
-            pattern_matches += 1
-    
-    # Increase impact of pattern matches (changed from 0.1 to 0.15 per match)
-    # Normalize score based on matches (max impact 0.75 instead of 0.6)
-    if pattern_matches > 0:
-        troll_score += min(0.75, pattern_matches * 0.15)
-    
-    # Check for extreme sentiment words (common in trolling)
-    words = re.findall(r'\b\w+\b', text.lower())
-    
-    # Count strong negative Filipino words
-    strong_negative_count = sum(1 for word in words if word in FILIPINO_LEXICON 
-                               and FILIPINO_LEXICON[word] <= -0.7)
-    
-    # Increase impact of negative words (changed from 0.1 to 0.15 per word)
-    # Add to score based on strong negative words (max impact 0.5 instead of 0.4)
-    if strong_negative_count > 0:
-        troll_score += min(0.5, strong_negative_count * 0.15)
-    
-    return min(1.0, troll_score)  # Cap at 1.0
-
-def has_excessive_formatting(text):
-    """
-    Check if text has excessive formatting typical of troll comments
-    """
-    # Check for ALL CAPS (if the comment is mostly uppercase)
-    words = text.split()
-    if len(words) >= 2:  # Only check comments with at least 2 words
-        uppercase_words = sum(1 for word in words if word.isupper() and len(word) > 1)
-        uppercase_ratio = uppercase_words / len(words)
-        if uppercase_ratio > 0.5:  # If more than 50% of words are ALL CAPS
-            return 0.5
-    
-    # Check for excessive punctuation
-    punctuation_count = sum(1 for char in text if char in '!?.')
-    if len(text) > 0:
-        punctuation_ratio = punctuation_count / len(text)
-        if punctuation_ratio > 0.1:  # If more than 10% of the text is punctuation
-            return 0.4
-    
-    # Check for repeated characters (like "hahahaha" or "!!!!!")
-    if re.search(r'(.)\1{3,}', text):  # Same character repeated 4+ times
-        return 0.3
-        
-    return 0.0
-def analyze_emoji_sentiment_for_trolls(emoji_text):
-    """
-    Check if the emojis in a comment indicate potential trolling
-    Returns a troll score from 0 to 1 based on emojis only
-    """
-    if not emoji_text:
-        return 0.0
-    
-    # Emojis commonly used in trolling
-    troll_emojis = {
-        "🤡": 0.8,  # Clown face - very common in trolling
-        "💀": 0.6,  # Skull - often used mockingly
-        "😂": 0.4,  # Laughing crying - when used excessively
-        "🤣": 0.4,  # Rolling on floor laughing - when used excessively
-        "🫠": 0.5,  # Melting face - often used sarcastically
-        "💩": 0.7,  # Poop emoji - directly insulting
-        "🙄": 0.5,  # Eye roll - dismissive
-        "🤦": 0.5,  # Facepalm - dismissive
-        "🤪": 0.4,  # Zany face - mocking
-        "🥴": 0.4,  # Woozy face - often used mockingly
-        "👋": 0.3,  # Waving hand - dismissive in context
-        "😴": 0.4,  # Sleeping - dismissive
-        "🤓": 0.5,  # Nerd face - often used mockingly
-    }
-    
-    total_score = 0
-    count = 0
-    
-    # Count occurrences of each emoji
-    emoji_counts = {}
-    for char in emoji_text:
-        if char in emoji_counts:
-            emoji_counts[char] += 1
-        else:
-            emoji_counts[char] = 1
-    
-    # Calculate total score based on emojis and their counts
-    for emoji, count in emoji_counts.items():
-        if emoji in troll_emojis:
-            # Higher score for repeated troll emojis
-            repetition_factor = min(2.0, 1.0 + (0.2 * (count - 1)))
-            total_score += troll_emojis[emoji] * repetition_factor
-            count += 1
-    
-    # If no troll emojis were found
-    if count == 0:
-        return 0.0
-        
-    # Normalize to 0-1 range
-    return min(1.0, total_score / count)
-
-class TrollDetector:
-    """
-    A class to detect troll comments with more contextual awareness
-    """
-    def __init__(self):
-        # Keep track of common troll phrases/patterns
-        self.troll_phrases = set()
-        self.learn_common_troll_phrases()
-        
-    def learn_common_troll_phrases(self):
-        """Load common troll phrases into memory"""
-        # Add common Filipino troll phrases
-        self.troll_phrases.update([
-            "respect my opinion",
-            "edi wow",
-            "lutang",
-            "leni lugaw",
-            "dilawan",
-            "pinklawan",
-            "bias ka",
-            "fakeNews",
-            "paid troll",
-            "bayaran",
-            "snowflake",
-            # Add more phrases as needed
-        ])
-    
-    def contains_troll_phrase(self, text):
-        """Check if text contains any known troll phrases"""
-        text_lower = text.lower()
-        return any(phrase in text_lower for phrase in self.troll_phrases)
-    
-    def detect_troll(self, text):
-        """
-        Enhanced troll detection with multiple factors
-        """
-        # Get basic troll analysis
-        basic_analysis = analyze_for_trolling(text)
-        
-        # Add phrase detection
-        if self.contains_troll_phrase(text):
-            # Increase troll score by 0.3 if it contains known troll phrases
-            basic_analysis['troll_score'] = min(1.0, basic_analysis['troll_score'] + 0.3)
-            basic_analysis['is_troll'] = basic_analysis['troll_score'] >= 0.3
-            
-        return basic_analysis
-
-
 
 # Function to preprocess text for sentiment analysis
 def preprocess_for_sentiment(text):
@@ -462,14 +81,11 @@ def preprocess_for_sentiment(text):
     Preprocess text specifically for sentiment analysis, preserving emoticons and key phrases.
     """
     if not isinstance(text, str):
-        return {"processed_text": "", "emojis": "", "demojized_text": "", "language": "unknown"}
-    
-    # Detect language - ADD THIS LINE
-    language = detect_language(text)
+        return {"processed_text": "", "emojis": "", "demojized_text": ""}
     
     # Convert to lowercase
     text = text.lower()
-
+    
     # Replace URLs with token
     text = re.sub(r'https?://\S+|www\.\S+', ' URL ', text)
     
@@ -490,15 +106,11 @@ def preprocess_for_sentiment(text):
     
     # Remove extra whitespace
     text = re.sub(r'\s+', ' ', text).strip()
-
-
-    
     
     return {
         'processed_text': text,
         'emojis': emojis_found,
-        'demojized_text': text_with_emoji_names,
-        'language': language  
+        'demojized_text': text_with_emoji_names
     }
 
 # VADER Sentiment Analysis
@@ -592,21 +204,12 @@ def train_with_labeled_data():
         return None
 
 # Advanced lexicon-based sentiment with TikTok-specific terms
-def analyze_lexicon_sentiment(text, language=None):
+def analyze_lexicon_sentiment(text):
     """
-    Analyze sentiment using TikTok and Filipino-specific lexicon.
-    
-    Args:
-        text: Text to analyze
-        language: Optional language code. If None, will detect internally.
+    Analyze sentiment using TikTok-specific lexicon.
     """
     if not text or not isinstance(text, str):
         return 0.0
-    
-    # Detect language if not provided
-    if language is None:
-        # Use the detect_language function
-        language = detect_language(text)
     
     text = text.lower()
     words = re.findall(r'\b\w+\b', text)
@@ -617,33 +220,17 @@ def analyze_lexicon_sentiment(text, language=None):
     total_score = 0
     count = 0
     
-    # Initialize lexicons with a default
-    lexicons = [TIKTOK_LEXICON, FILIPINO_LEXICON]
-    
-    # Then modify the order based on detected language
-    if language == 'tl':
-        # Filipino content - check Filipino lexicon first, then TikTok
-        lexicons = [FILIPINO_LEXICON, TIKTOK_LEXICON]
-    elif language == 'mixed':
-        # Taglish content - check both lexicons with equal priority
-        lexicons = [FILIPINO_LEXICON, TIKTOK_LEXICON]
-    # Default for 'en' or 'unknown' is already set above
-    
-    # Check for words in the appropriate lexicons
+    # Check for words
     for word in words:
-        for lexicon in lexicons:
-            if word in lexicon:
-                total_score += lexicon[word]
-                count += 1
-                break  # Found in one lexicon, no need to check the other
+        if word in TIKTOK_LEXICON:
+            total_score += TIKTOK_LEXICON[word]
+            count += 1
     
     # Check for phrases
     for phrase in bigrams:
-        for lexicon in lexicons:
-            if phrase in lexicon:
-                total_score += lexicon[phrase]
-                count += 1
-                break
+        if phrase in TIKTOK_LEXICON:
+            total_score += TIKTOK_LEXICON[phrase]
+            count += 1
     
     # If no sentiment words were found
     if count == 0:
@@ -869,25 +456,21 @@ def combined_sentiment_analysis(text_series):
             results.append("Neutral (0.00)")
             continue
         
-        # Process text - this now includes language detection
-        processed = preprocess_for_sentiment(text)
-        detected_language = processed['language']  # Get the detected language
-        
         # Get VADER sentiment
         sid = SentimentIntensityAnalyzer()
         vader_scores = sid.polarity_scores(text)
         vader_compound = vader_scores['compound']
         
         # Extract emojis
-        emojis_found = processed['emojis']
+        emojis_found = ''.join(c for c in text if c in emoji.EMOJI_DATA)
         
         # Get emoji sentiment if emojis exist
         emoji_score = 0
         if emojis_found:
             emoji_score = analyze_emoji_sentiment(emojis_found)
         
-        # Get TikTok lexicon sentiment - pass the detected language
-        lexicon_score = analyze_lexicon_sentiment(text, detected_language)
+        # Get TikTok lexicon sentiment
+        lexicon_score = analyze_lexicon_sentiment(text)
         
         # Weight the scores
         weights = {
@@ -1084,109 +667,3 @@ def get_sentiment_breakdown(text):
         "final": final_score,
         "sentiment": sentiment
     }
-
-# Function to analyze comments for trolling behavior
-def analyze_for_trolling(text):
-    """
-    Perform comprehensive analysis to detect troll comments.
-    Returns a dictionary with troll score and language information.
-    
-    Args:
-        text: Comment text to analyze
-        
-    Returns:
-        Dictionary with troll_score, language, and is_troll flag
-    """
-    # Process text and detect language
-    processed = preprocess_for_sentiment(text)
-    language = processed['language']
-    
-    # Get troll pattern score
-    troll_pattern_score = detect_troll_patterns(text)
-    
-    # Get sentiment scores
-    sentiment_breakdown = get_sentiment_breakdown(text)
-    # Troll comments often have extreme negative sentiment
-    sentiment_score = sentiment_breakdown['final']
-    
-    # Extract emojis from text
-    emojis_found = ''.join(c for c in text if c in emoji.EMOJI_DATA)
-    
-    # Get emoji troll score if emojis exist
-    emoji_troll_score = 0
-    if emojis_found:
-        emoji_troll_score = analyze_emoji_sentiment_for_trolls(emojis_found)
-    
-    # Troll comments often have extreme negative sentiment
-    sentiment_score = sentiment_breakdown['final']
-    
-    # Higher troll likelihood if extremely negative sentiment
-    sentiment_factor = 0.0
-    if sentiment_score <= -0.7:  # Very negative content - increased from -0.6
-        sentiment_factor = 0.4   # Increased from 0.3
-    elif sentiment_score <= -0.4:  # Moderately negative - increased from -0.3
-        sentiment_factor = 0.2   # Increased from 0.1
-    elif sentiment_score <= -0.2:  # Slightly negative - new bracket
-        sentiment_factor = 0.1   # New level
-    # Check for very short comments with strong negative words
-    words = re.findall(r'\b\w+\b', text.lower())
-    strong_negative_count = sum(1 for word in words if word in FILIPINO_LEXICON 
-                              and FILIPINO_LEXICON[word] <= -0.7)
-    
-    # (Add this before calculating final_troll_score)
-    is_short_comment = len(text.split()) < 5  # Less than 5 words
-    if is_short_comment and strong_negative_count > 0:
-        additional_factor = 0.2  # Short negative comments are often trolls
-    else:
-        additional_factor = 0.0
-    # Check for excessive formatting
-    formatting_score = has_excessive_formatting(text)
-
-    # Add emoji troll factor (weighted at 0.3)
-    emoji_factor = emoji_troll_score * 0.3
-    # Final troll score combines all factors
-    final_troll_score = min(1.0, troll_pattern_score + sentiment_factor + 
-                         additional_factor + emoji_factor + formatting_score)
-    
-    # Flag as troll if score exceeds threshold (adjust as needed)
-    is_troll = final_troll_score >= 0.3
-    
-    return {
-        'troll_score': final_troll_score,
-        'language': language,
-        'is_troll': is_troll,
-        'sentiment': sentiment_breakdown['sentiment'],
-        'sentiment_score': sentiment_score
-    }
-
-# Example usage code for testing troll detection
-def test_troll_detection():
-    test_comments = [
-        "I really love this content, so helpful!",
-        "HAHAHAHA ANG BOBO MO NAMAN!!! 🤡🤡🤡",
-        "Ang ganda ng video na to, very informative",
-        "dilawan ka siguro bayaran ng mga aquino!!!!!",
-        "This is mid at best, kinda disappointing",
-        "RESPECT MY OPINION NALANG PO MGA SNOWFLAKE 🤡🤡🤡",
-        "Neutral comment just saying hello",
-        "walang kwentang content tapos ang panget pa ng presentation",
-        "Sana all ganito kagaling mag explain",
-    ]
-    
-    for comment in test_comments:
-        result = analyze_for_trolling(comment)
-        print(f"\nComment: {comment}")
-        print(f"Language: {result['language']}")
-        print(f"Troll Score: {result['troll_score']:.2f} (Is Troll: {result['is_troll']})")
-        print(f"Sentiment: {result['sentiment']} (Score: {result['sentiment_score']:.2f})")
-
-# To run the test when the script is executed directly
-if __name__ == "__main__":
-    # You can call your test function here
-    test_troll_detection()
-    
-    # Or add your own test cases
-    print("\nTesting a single comment:")
-    result = analyze_for_trolling("Ang pangit ng content mo, walang kwenta!!!")
-    print(f"Troll Score: {result['troll_score']:.2f} (Is Troll: {result['is_troll']})")
-    
