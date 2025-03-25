@@ -584,6 +584,86 @@ def enhanced_sentiment_analysis(text_series):
     
     return pd.Series(results)
 
+def ensemble_sentiment_analysis(texts):
+    """
+    Ensemble of all sentiment analysis methods.
+    """
+    # Handle different input types
+    single_input = False
+    if isinstance(texts, str):
+        texts = [texts]
+        single_input = True
+    elif isinstance(texts, pd.Series):
+        texts = texts.tolist()
+    
+    results = []
+    
+    for text in texts:
+        if not isinstance(text, str) or text.strip() == "":
+            results.append("Neutral (0.00)")
+            continue
+        
+        # Get results from all methods
+        vader_result = analyze_sentiment_vader(text)
+        enhanced_result = enhanced_sentiment_analysis(text)
+        
+        # Get ML results if model is trained
+        if ml_model is not None:
+            ml_result = predict_mnb_model(text)
+        else:
+            # Use enhanced as substitute if ML not available
+            ml_result = enhanced_result
+        
+        # Extract scores
+        vader_score = _extract_sentiment_score(vader_result)
+        ml_score = _extract_sentiment_score(ml_result)
+        enhanced_score = _extract_sentiment_score(enhanced_result)
+        
+        # Get transformer result if available
+        try:
+            from transformers import pipeline
+            sentiment_pipeline = pipeline('sentiment-analysis')
+            transformer_result = sentiment_pipeline(text)[0]
+            
+            # Map pipeline result to our scoring system
+            if transformer_result['label'] == 'POSITIVE':
+                transformer_score = transformer_result['score']
+            elif transformer_result['label'] == 'NEGATIVE':
+                transformer_score = -transformer_result['score']
+            else:
+                transformer_score = 0.0
+                
+            # Weighted average with transformer
+            weights = {'vader': 0.2, 'ml': 0.2, 'enhanced': 0.3, 'transformer': 0.3}
+            final_score = (
+                weights['vader'] * vader_score +
+                weights['ml'] * ml_score +
+                weights['enhanced'] * enhanced_score +
+                weights['transformer'] * transformer_score
+            )
+        except:
+            # Weighted average without transformer
+            weights = {'vader': 0.3, 'ml': 0.3, 'enhanced': 0.4}
+            final_score = (
+                weights['vader'] * vader_score +
+                weights['ml'] * ml_score +
+                weights['enhanced'] * enhanced_score
+            )
+        
+        # Convert to sentiment label with score
+        if final_score >= 0.05:
+            results.append(f"Positive ({final_score:.2f})")
+        elif final_score <= -0.05:
+            results.append(f"Negative ({final_score:.2f})")
+        else:
+            results.append(f"Neutral ({final_score:.2f})")
+    
+    # Return based on input type
+    if single_input:
+        return results[0]
+    else:
+        return pd.Series(results)
+
 # Function to get sentiment scores breakdown
 def get_sentiment_breakdown(text):
     """
