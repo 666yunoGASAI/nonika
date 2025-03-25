@@ -4,14 +4,13 @@ import re
 import emoji
 from apify_client import ApifyClient
 from sentiment_analysis import (
-    TrollDetector,
     analyze_sentiment_vader, 
     train_mnb_model, 
     combined_sentiment_analysis,
     enhanced_sentiment_analysis,
-    get_sentiment_breakdown,
-    analyze_for_trolling
+    get_sentiment_breakdown
 )
+from sentiment_analysis import ensemble_sentiment_analysis
 # Import Tagalog sentiment functions
 from tagalog_sentiment import (
     is_tagalog,
@@ -31,9 +30,14 @@ import plotly.graph_objects as go
 import io
 import csv
 import chardet  # You may need to pip install chardet
-
-troll_detector = TrollDetector()
-
+# Import market trend analysis functions
+from market_trend_analysis import (
+    calculate_market_trend_score,
+    plot_market_prediction,
+    predict_purchase_volume,
+    generate_market_trend_report,
+    add_market_trends_tab
+)
 
 # Load API keys
 load_dotenv()
@@ -94,11 +98,11 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
         if is_tagalog(text):
             return tagalog_enhanced_sentiment_analysis(text)
         else:
-            return enhanced_sentiment_analysis(text)  # Your existing function
+            return ensemble_sentiment_analysis(text)  # Use ensemble instead of enhanced
     
     elif language_mode == "English Only":
         # Force English analysis regardless of language
-        return enhanced_sentiment_analysis(text)  # Your existing function
+        return ensemble_sentiment_analysis(text)  # Use ensemble instead
     
     elif language_mode == "Tagalog Only":
         # Force Tagalog analysis regardless of language
@@ -108,41 +112,6 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
         # Always use the multilingual analyzer
         return tagalog_enhanced_sentiment_analysis(text)
     
-def analyze_comment_with_trolling(text, language_mode=None):
-    """
-    Analyzes comment for both sentiment and troll detection.
-    
-    Args:
-        text: Text to analyze
-        language_mode: Language mode preference
-        
-    Returns:
-        Dictionary with sentiment and troll information
-    """
-    # Get standard sentiment analysis with language preference
-    sentiment = analyze_sentiment_with_language_preference(text, language_mode)
-    
-    # Get troll analysis
-    troll_analysis = analyze_for_trolling(text)
-    
-    # Format result as: "Sentiment (score) [TROLL]" if it's a troll
-    result = sentiment
-    if troll_analysis['is_troll']:
-        # Extract the existing sentiment part
-        sentiment_part = sentiment.split(' (')[0]
-        score_part = sentiment.split('(')[1]
-        
-        # Add the troll marker
-        result = f"{sentiment_part} (TROLL) ({score_part}"
-    
-    return {
-        'sentiment_text': result,
-        'is_troll': troll_analysis['is_troll'],
-        'troll_score': troll_analysis['troll_score'],
-        'language': troll_analysis['language']
-    }
-
-
 def get_sentiment_breakdown_with_language(text, language_mode=None):
     """
     Get sentiment breakdown with language preference.
@@ -597,13 +566,6 @@ This application now supports sentiment analysis for:
 - Regional Filipino dialects (Bisaya, Ilokano, Bikolano, etc.)
 - Social media slang and TikTok-specific expressions in Tagalog
 
-The application now features troll detection capabilities:
-- Identifies comments with troll-like behavior patterns
-- Analyzes language patterns specific to trolling
-- Detects excessive punctuation, ALL CAPS, and inflammatory language
-- Provides a troll score for each comment
-- Specialized detection for Filipino/Taglish troll comments
-
 You can set your language preference in the sidebar under "Language Settings".
 """
 
@@ -694,22 +656,21 @@ elif page == "Upload Data":
                     comments_df['Combined Sentiment'] = combined_sentiment_analysis(comments_df['Demojized'])
                     
                     # Apply enhanced sentiment analysis with language preference
-                    troll_results = comments_df['Comment'].apply(
-                        lambda text: analyze_comment_with_trolling(text, language_mode)
+                    comments_df['Enhanced Sentiment'] = comments_df['Comment'].apply(
+                        lambda text: analyze_sentiment_with_language_preference(text, language_mode)
                     )
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
-                    comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
-                    comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score']
+                    # In your data processing sections, add:
+                    comments_df['Ensemble Sentiment'] = comments_df['Comment'].apply(
+                        lambda text: ensemble_sentiment_analysis(text)
                     )
-                    
                 
                 # Create tabs for different views
-                tab1, tab2, tab3, tab4 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics"])
+                tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
                 
                 with tab1:
                     # Display data
                     st.subheader("Processed Comments")
-                    st.dataframe(comments_df[['Comment', 'Processed Comment', 'VADER Sentiment', 'MNB Sentiment', 'Enhanced Sentiment', 'Is Troll', 'Troll Score']])
+                    st.dataframe(comments_df[['Comment', 'Processed Comment', 'VADER Sentiment', 'MNB Sentiment', 'Enhanced Sentiment']])
                     
                     # Allow download of processed data
                     csv = comments_df.to_csv(index=False)
@@ -775,18 +736,6 @@ elif page == "Upload Data":
                         st.subheader("Sentiment Distribution")
                         # Plot sentiment distribution
                         fig = plot_sentiment_distribution(comments_df, 'Enhanced Sentiment')
-                        st.subheader("Troll Comment Distribution")
-                        troll_counts = comments_df['Is Troll'].value_counts()
-                        fig, ax = plt.subplots(figsize=(10, 5))
-                        colors = ['red', 'green']
-                        sns.barplot(x=['Troll', 'Not Troll'], y=[troll_counts.get(True, 0), troll_counts.get(False, 0)], palette=colors, ax=ax)
-                        ax.set_title('Troll vs. Normal Comments')
-                        ax.set_ylabel('Count')
-                        total = len(comments_df)
-                        troll_pct = 100 * troll_counts.get(True, 0) / total
-                        normal_pct = 100 * troll_counts.get(False, 0) / total
-                        ax.text(0, troll_counts.get(True, 0) + 5, f'{troll_pct:.1f}%', ha='center')
-                        ax.text(1, troll_counts.get(False, 0) + 5, f'{normal_pct:.1f}%', ha='center')
                         st.pyplot(fig)
                     
                     with col2:
@@ -854,8 +803,7 @@ elif page == "Upload Data":
                         "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                         "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                         "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                        "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)]),
-                        "Troll Comments": len(comments_df[comments_df['Is Troll'] == True])
+                        "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                     }
                     
                     # Display stats in columns
@@ -867,7 +815,6 @@ elif page == "Upload Data":
                     col3.metric("Neutral Comments", stats["Neutral Comments"])
                     col3.metric("Comments with Emojis", stats["Comments with Emojis"])
                     col1.metric("Tagalog Comments", stats["Tagalog Comments"])
-                    col3.metric("Troll Comments", stats["Troll Comments"])
                     
                     # Hashtag analysis
                     st.subheader("Hashtag Analysis")
@@ -885,6 +832,9 @@ elif page == "Upload Data":
                         st.pyplot(fig)
                     else:
                         st.info("No hashtags found in the comments.")
+                with tab5:
+                        # Add market trends analysis
+                        add_market_trends_tab(comments_df)
 
 # TikTok Comment Fetching
 elif page == "Fetch TikTok Comments":
@@ -929,21 +879,22 @@ elif page == "Fetch TikTok Comments":
                             # Apply combined sentiment analysis
                             comments_df['Combined Sentiment'] = combined_sentiment_analysis(comments_df['Demojized'])
                             
-                            troll_results = comments_df['Comment'].apply(
-                                lambda text: analyze_comment_with_trolling(text, language_mode)
+                            # Apply enhanced sentiment analysis with language preference
+                            comments_df['Enhanced Sentiment'] = comments_df['Comment'].apply(
+                                lambda text: analyze_sentiment_with_language_preference(text, language_mode)
                             )
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
-                            comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
-                            comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score']
-                                                 )
+                            # In your data processing sections, add:
+                            comments_df['Ensemble Sentiment'] = comments_df['Comment'].apply(
+                                lambda text: ensemble_sentiment_analysis(text)
+                            )
                     
                     # Create tabs for different views
-                    tab1, tab2, tab3, tab4 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics"])
+                    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
                     
                     with tab1:
                         # Display data
                         st.subheader("Processed Comments")
-                        st.dataframe(comments_df[['Comment', 'Processed Comment', 'VADER Sentiment', 'MNB Sentiment', 'Enhanced Sentiment', 'Is Troll', 'Troll Score']])
+                        st.dataframe(comments_df[['Comment', 'Processed Comment', 'VADER Sentiment', 'MNB Sentiment', 'Enhanced Sentiment']])
                         
                         # Allow download of processed data
                         csv = comments_df.to_csv(index=False)
@@ -1077,8 +1028,7 @@ elif page == "Fetch TikTok Comments":
                             "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                             "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                             "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                            "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)]),
-                            "Troll Comments": len(comments_df[comments_df['Is Troll'] == True])
+                            "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                         }
                         
                         # Display stats in columns
@@ -1090,7 +1040,6 @@ elif page == "Fetch TikTok Comments":
                         col3.metric("Neutral Comments", stats["Neutral Comments"])
                         col3.metric("Comments with Emojis", stats["Comments with Emojis"])
                         col1.metric("Tagalog Comments", stats["Tagalog Comments"])
-                        col3.metric("Troll Comments", stats["Troll Comments"])
                         
                         # Hashtag analysis
                         st.subheader("Hashtag Analysis")
@@ -1108,6 +1057,9 @@ elif page == "Fetch TikTok Comments":
                             st.pyplot(fig)
                         else:
                             st.info("No hashtags found in the comments.")
+                    with tab5:
+                        # Add market trends analysis
+                        add_market_trends_tab(comments_df)
                 else:
                     st.error("Failed to fetch comments. Please check the video link and try again.")
         else:
@@ -1152,30 +1104,13 @@ elif page == "Sentiment Explorer":
             # Perform sentiment analysis
             vader_sentiment = analyze_sentiment_vader(processed['demojized'])
             combined_sentiment = combined_sentiment_analysis(processed['demojized'])
-            full_analysis = analyze_comment_with_trolling(test_comment, language_mode)
-            enhanced_sentiment = full_analysis['sentiment_text']
+            enhanced_sentiment = analyze_sentiment_with_language_preference(test_comment, language_mode)
             
             # Display sentiment results
             st.subheader("Sentiment Analysis")
             st.write(f"**VADER:** {vader_sentiment}")
             st.write(f"**Combined:** {combined_sentiment}")
             st.write(f"**Enhanced (with language detection):** {enhanced_sentiment}")
-            st.subheader("Troll Detection")
-            st.write(f"**Is Troll Comment:** {'Yes' if full_analysis['is_troll'] else 'No'}")
-            st.write(f"**Troll Score:** {full_analysis['troll_score']:.2f} (Higher values indicate more troll-like behavior)")
-            if full_analysis['is_troll']:
-             st.markdown("""
-            <div style="background-color: #ffebee; padding: 10px; border-radius: 5px; border-left: 5px solid #f44336;">
-                <h4 style="color: #b71c1c; margin-top: 0;">Troll Comment Detected</h4>
-                <p>This comment shows characteristics commonly found in trolling behavior:</p>
-                <ul>
-                <li>Aggressive or inflammatory language</li>
-                <li>Excessive punctuation or capitalization</li>
-                <li>Use of insults or derogatory terms</li>
-                <li>Potential use of sarcasm or baiting language</li>
-            </ul>
-            </div>
-            """, unsafe_allow_html=True)
         
         with col2:
             # Display sentiment breakdown
