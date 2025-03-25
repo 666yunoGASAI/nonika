@@ -126,21 +126,15 @@ def analyze_comment_with_trolling(text, language_mode=None):
     Returns:
         Dictionary with sentiment and troll information
     """
-    # Get standard sentiment analysis with language preference
-    sentiment = analyze_sentiment_with_language_preference(text, language_mode)
-    
-    # Get troll analysis
+    # Get troll analysis first
     troll_analysis = analyze_for_trolling(text)
     
-    # Format result as: "Sentiment (score) [TROLL]" if it's a troll
-    result = sentiment
+    # If it's a troll, mark it as such regardless of sentiment
     if troll_analysis['is_troll']:
-        # Extract the existing sentiment part
-        sentiment_part = sentiment.split(' (')[0]
-        score_part = sentiment.split('(')[1]
-        
-        # Add the troll marker
-        result = f"{sentiment_part} (TROLL) ({score_part}"
+        result = "Troll (1.00)"  # Mark as Troll with high confidence
+    else:
+        # Only get sentiment analysis if not a troll
+        result = analyze_sentiment_with_language_preference(text, language_mode)
     
     return {
         'sentiment_text': result,
