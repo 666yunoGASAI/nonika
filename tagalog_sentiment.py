@@ -800,11 +800,11 @@ def predict_multilingual_sentiment(text_series):
     # Function to integrate with existing sentiment analysis
 def tagalog_enhanced_sentiment_analysis(text_series):
         """
-        Performs enhanced sentiment analysis for Tagalog text without adding troll labels.
+        Performs enhanced sentiment analysis for Tagalog text.
         
         Args:
             text_series: Text to analyze
-        
+            
         Returns:
             str: Sentiment label with score, e.g. "Positive (0.85)"
         """
@@ -812,18 +812,14 @@ def tagalog_enhanced_sentiment_analysis(text_series):
         if isinstance(text_series, str):
             text = text_series
             
-            # Get component scores (your existing tagalog analysis logic here)
-            # ...
+            # Get the breakdown from the existing function
+            breakdown = get_tagalog_sentiment_breakdown(text)
             
-            # Determine sentiment
-            if final_score >= 0.05:
-                sentiment = "Positive"
-            elif final_score <= -0.05:
-                sentiment = "Negative"
-            else:
-                sentiment = "Neutral"
+            # Extract just the sentiment and score - no troll info
+            sentiment = breakdown['sentiment']
+            final_score = breakdown['final']
             
-            # IMPORTANT: Return ONLY sentiment and score, no troll information
+            # Return ONLY sentiment and score
             return f"{sentiment} ({final_score:.2f})"
         
         # Handle series
