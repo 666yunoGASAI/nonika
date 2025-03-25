@@ -8,6 +8,7 @@ from sentiment_analysis import (
     train_mnb_model, 
     combined_sentiment_analysis,
     enhanced_sentiment_analysis,
+    ensemble_sentiment_analysis,
     get_sentiment_breakdown
 )
 # Import Tagalog sentiment functions
@@ -97,11 +98,11 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
         if is_tagalog(text):
             return tagalog_enhanced_sentiment_analysis(text)
         else:
-            return enhanced_sentiment_analysis(text)  # Your existing function
+            return ensemble_sentiment_analysis(text)  # Use ensemble instead of enhanced
     
     elif language_mode == "English Only":
         # Force English analysis regardless of language
-        return enhanced_sentiment_analysis(text)  # Your existing function
+        return ensemble_sentiment_analysis(text)  # Use ensemble instead
     
     elif language_mode == "Tagalog Only":
         # Force Tagalog analysis regardless of language
@@ -110,7 +111,7 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
     else:  # Multilingual mode
         # Always use the multilingual analyzer
         return tagalog_enhanced_sentiment_analysis(text)
-
+    
 def get_sentiment_breakdown_with_language(text, language_mode=None):
     """
     Get sentiment breakdown with language preference.
@@ -658,6 +659,10 @@ elif page == "Upload Data":
                     comments_df['Enhanced Sentiment'] = comments_df['Comment'].apply(
                         lambda text: analyze_sentiment_with_language_preference(text, language_mode)
                     )
+                    # In your data processing sections, add:
+                    comments_df['Ensemble Sentiment'] = comments_df['Comment'].apply(
+                        lambda text: ensemble_sentiment_analysis(text)
+                    )
                 
                 # Create tabs for different views
                 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -877,6 +882,10 @@ elif page == "Fetch TikTok Comments":
                             # Apply enhanced sentiment analysis with language preference
                             comments_df['Enhanced Sentiment'] = comments_df['Comment'].apply(
                                 lambda text: analyze_sentiment_with_language_preference(text, language_mode)
+                            )
+                            # In your data processing sections, add:
+                            comments_df['Ensemble Sentiment'] = comments_df['Comment'].apply(
+                                lambda text: ensemble_sentiment_analysis(text)
                             )
                     
                     # Create tabs for different views
