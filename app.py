@@ -666,13 +666,16 @@ elif page == "Upload Data":
                 display_df = pd.DataFrame()
                 display_df['Comment'] = comments_df['Comment']
                 
-                # Calculate sentiment type from score when displaying
+                # Clean sentiment display - NO TROLL INFO
                 display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
                     lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
                 )
                 
-                # Add separate troll indicator
-                display_df['Troll Alert'] = comments_df['Is_Troll'].apply(lambda x: "🚨" if x else "")
+                # Completely separate troll column
+                display_df['Troll Status'] = comments_df.apply(
+                    lambda row: f"🚨 ({row['Troll Score']:.2f})" if row['Is_Troll'] else "",
+                    axis=1
+                )
                 
                 # Add this right after getting troll_results
                 st.write("Sample troll_result:", troll_results.iloc[0] if len(troll_results) > 0 else "No results")
@@ -686,7 +689,8 @@ elif page == "Upload Data":
                 with tab1:
                     # Display data
                     st.subheader("Processed Comments")
-                    st.dataframe(display_df[['Comment', 'Sentiment', 'Troll Alert']])
+                    # Show comment, clean sentiment, and separate troll status
+                    st.dataframe(display_df[['Comment', 'Sentiment', 'Troll Status']])
                     
                     # For detailed analysis, show:
                     st.dataframe(comments_df[[
@@ -1032,13 +1036,16 @@ elif page == "Fetch TikTok Comments":
                     display_df = pd.DataFrame()
                     display_df['Comment'] = comments_df['Comment']
                     
-                    # Calculate sentiment type from score when displaying
+                    # Clean sentiment display - NO TROLL INFO
                     display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
                         lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
                     )
                     
-                    # Add separate troll indicator
-                    display_df['Troll Alert'] = comments_df['Is_Troll'].apply(lambda x: "🚨" if x else "")
+                    # Completely separate troll column
+                    display_df['Troll Status'] = comments_df.apply(
+                        lambda row: f"🚨 ({row['Troll Score']:.2f})" if row['Is_Troll'] else "",
+                        axis=1
+                    )
                     
                     # Add this right after getting troll_results
                     st.write("Sample troll_result:", troll_results.iloc[0] if len(troll_results) > 0 else "No results")
@@ -1052,7 +1059,8 @@ elif page == "Fetch TikTok Comments":
                     with tab1:
                         # Display data
                         st.subheader("Processed Comments")
-                        st.dataframe(display_df[['Comment', 'Sentiment', 'Troll Alert']])
+                        # Show comment, clean sentiment, and separate troll status
+                        st.dataframe(display_df[['Comment', 'Sentiment', 'Troll Status']])
                         
                         # For detailed analysis, show:
                         st.dataframe(comments_df[[
@@ -1285,7 +1293,6 @@ elif page == "Fetch TikTok Comments":
                             st.subheader("Sentiment Metrics")
                             # Calculate metrics excluding trolls
                             valid_comments = comments_df[~comments_df['Is_Troll']]
-                            # Use Enhanced Score to determine sentiment, not Enhanced Sentiment
                             valid_comments['Clean_Sentiment'] = valid_comments['Enhanced Score'].apply(
                                 lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
                             )
@@ -1481,20 +1488,20 @@ elif page == "Sentiment Explorer":
         # Add comparison section
         st.subheader("Analysis Methods Comparison")
         
-        # Create comparison table
+        # Create comparison table with separate columns
         comparison_data = {
             'Method': ['VADER', 'MNB', 'Combined', 'Enhanced'],
-            'Sentiment': [
+            'Sentiment Score': [
                 analyze_sentiment_vader(test_comment),
                 train_mnb_model([test_comment])[0],
                 combined_sentiment_analysis(test_comment),
-                f"{sentiment_type} ({analysis_result['sentiment_score']:.2f})"
+                f"{analysis_result['sentiment_score']:.2f}"
             ],
-            'Troll Status': [
+            'Troll Detection': [
                 'N/A',
                 'N/A',
                 'N/A',
-                'TROLL' if analysis_result['is_troll'] else 'Not a Troll'
+                f"{'🚨' if analysis_result['is_troll'] else ''} ({analysis_result['troll_score']:.2f})"
             ]
         }
         
@@ -1578,13 +1585,16 @@ def process_comments(comments_df):
     display_df = pd.DataFrame()
     display_df['Comment'] = comments_df['Comment']
     
-    # Calculate sentiment type from score when displaying
+    # Clean sentiment display - NO TROLL INFO
     display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
         lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
     )
     
-    # Add separate troll indicator
-    display_df['Troll Alert'] = comments_df['Is_Troll'].apply(lambda x: "🚨" if x else "")
+    # Completely separate troll column
+    display_df['Troll Status'] = comments_df.apply(
+        lambda row: f"🚨 ({row['Troll Score']:.2f})" if row['Is_Troll'] else "",
+        axis=1
+    )
     
     return display_df
 
