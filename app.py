@@ -707,8 +707,7 @@ elif page == "Upload Data":
                     )
 
                     # Store sentiment and troll results as separate columns
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])  # Just the base sentiment
-                    comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])  # Just the score
+                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: f"{x['sentiment_text']} ({x['sentiment_score']:.2f})")
                     comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                 
@@ -720,25 +719,17 @@ elif page == "Upload Data":
                     st.subheader("Processed Comments")
                     
                     # Create three columns for sentiment, troll data, and additional info
-                    col1, col2, col3 = st.columns(3)  # Changed to 3 columns
+                    col1, col2, col3 = st.columns(3)
                     
                     with col1:
                         st.write("**Basic Sentiment Analysis**")
-                        # Show only basic sentiment columns
                         basic_sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment']]
                         st.dataframe(basic_sentiment_df)
                     
                     with col2:
                         st.write("**Enhanced Sentiment Analysis**")
-                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score']].copy()
-                        
-                        # Format the display without any troll information
-                        enhanced_df['Analysis'] = enhanced_df.apply(
-                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
-                            axis=1
-                        )
-                        
-                        st.dataframe(enhanced_df[['Comment', 'Analysis']])
+                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
+                        st.dataframe(enhanced_df)
                     
                     with col3:
                         st.write("**Troll Detection Results**")
@@ -984,8 +975,7 @@ elif page == "Fetch TikTok Comments":
                             )
 
                             # Store sentiment and troll results as separate columns
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])  # Just the base sentiment
-                            comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])  # Just the score
+                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: f"{x['sentiment_text']} ({x['sentiment_score']:.2f})")
                             comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                     
@@ -997,25 +987,17 @@ elif page == "Fetch TikTok Comments":
                         st.subheader("Processed Comments")
                         
                         # Create three columns for sentiment, troll data, and additional info
-                        col1, col2, col3 = st.columns(3)  # Changed to 3 columns
+                        col1, col2, col3 = st.columns(3)
                         
                         with col1:
                             st.write("**Basic Sentiment Analysis**")
-                            # Show only basic sentiment columns
                             basic_sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment']]
                             st.dataframe(basic_sentiment_df)
                         
                         with col2:
                             st.write("**Enhanced Sentiment Analysis**")
-                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score']].copy()
-                            
-                            # Format the display without any troll information
-                            enhanced_df['Analysis'] = enhanced_df.apply(
-                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
-                                axis=1
-                            )
-                            
-                            st.dataframe(enhanced_df[['Comment', 'Analysis']])
+                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
+                            st.dataframe(enhanced_df)
                         
                         with col3:
                             st.write("**Troll Detection Results**")
