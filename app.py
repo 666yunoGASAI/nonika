@@ -706,9 +706,10 @@ elif page == "Upload Data":
                         lambda text: analyze_comment_with_trolling(text, language_mode)
                     )
 
-                    # Store sentiment and troll results as separate columns
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' ')[0])
-                    comments_df['Enhanced Score'] = troll_results.apply(lambda x: float(x['sentiment_text'].split(' ')[1].strip('()')))
+                    # Store sentiment and troll results as separate columns - MODIFIED
+                    comments_df['Raw Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
+                    comments_df['Enhanced Sentiment'] = comments_df['Raw Sentiment'].apply(lambda x: x.split(' ')[0])  # Just the sentiment type
+                    comments_df['Enhanced Score'] = comments_df['Raw Sentiment'].apply(lambda x: float(x.split(' ')[1].strip('()')))  # Just the score
                     comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                     comments_df['Troll Sentiment'] = troll_results.apply(lambda x: f"TROLL ({x['troll_score']:.2f})" if x['is_troll'] else "")
@@ -730,11 +731,23 @@ elif page == "Upload Data":
                         st.dataframe(basic_sentiment_df)
                     
                     with col2:
-                        st.write("**Enhanced Sentiment**")
-                        # Show enhanced sentiment with score but without troll info
-                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
-                        enhanced_df['Enhanced Sentiment'] = enhanced_df['Enhanced Sentiment'] + ' (' + comments_df['Enhanced Score'].astype(str) + ')'
-                        st.dataframe(enhanced_df)
+                        st.write("**Enhanced Sentiment Analysis**")
+                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score', 'Is Troll']].copy()
+                        
+                        # Create a cleaner display format that keeps sentiment and troll status separate
+                        enhanced_df['Analysis'] = enhanced_df.apply(
+                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})" + 
+                                       (f" [TROLL]" if row['Is Troll'] else ""), 
+                            axis=1
+                        )
+                        
+                        # Display with color coding for trolls
+                        st.dataframe(
+                            enhanced_df[['Comment', 'Analysis']].style.apply(
+                                lambda x: ['background-color: #ffcdd2' if comments_df.loc[x.index, 'Is Troll'].any() else '' for _ in x.columns], 
+                                axis=1
+                            )
+                        )
                     
                     with col3:
                         st.write("**Troll Detection Results**")
@@ -979,9 +992,10 @@ elif page == "Fetch TikTok Comments":
                                 lambda text: analyze_comment_with_trolling(text, language_mode)
                             )
 
-                            # Store sentiment and troll results as separate columns
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' ')[0])
-                            comments_df['Enhanced Score'] = troll_results.apply(lambda x: float(x['sentiment_text'].split(' ')[1].strip('()')))
+                            # Store sentiment and troll results as separate columns - MODIFIED
+                            comments_df['Raw Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
+                            comments_df['Enhanced Sentiment'] = comments_df['Raw Sentiment'].apply(lambda x: x.split(' ')[0])  # Just the sentiment type
+                            comments_df['Enhanced Score'] = comments_df['Raw Sentiment'].apply(lambda x: float(x.split(' ')[1].strip('()')))  # Just the score
                             comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                             comments_df['Troll Sentiment'] = troll_results.apply(lambda x: f"TROLL ({x['troll_score']:.2f})" if x['is_troll'] else "")
@@ -1003,11 +1017,23 @@ elif page == "Fetch TikTok Comments":
                             st.dataframe(basic_sentiment_df)
                         
                         with col2:
-                            st.write("**Enhanced Sentiment**")
-                            # Show enhanced sentiment with score but without troll info
-                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
-                            enhanced_df['Enhanced Sentiment'] = enhanced_df['Enhanced Sentiment'] + ' (' + comments_df['Enhanced Score'].astype(str) + ')'
-                            st.dataframe(enhanced_df)
+                            st.write("**Enhanced Sentiment Analysis**")
+                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score', 'Is Troll']].copy()
+                            
+                            # Create a cleaner display format that keeps sentiment and troll status separate
+                            enhanced_df['Analysis'] = enhanced_df.apply(
+                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})" + 
+                                           (f" [TROLL]" if row['Is Troll'] else ""), 
+                                axis=1
+                            )
+                            
+                            # Display with color coding for trolls
+                            st.dataframe(
+                                enhanced_df[['Comment', 'Analysis']].style.apply(
+                                    lambda x: ['background-color: #ffcdd2' if comments_df.loc[x.index, 'Is Troll'].any() else '' for _ in x.columns], 
+                                    axis=1
+                                )
+                            )
                         
                         with col3:
                             st.write("**Troll Detection Results**")
