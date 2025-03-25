@@ -439,27 +439,26 @@ def create_wordcloud(text_series):
 
 # Function to analyze sentiment distribution
 def plot_sentiment_distribution(df):
-    """Create separate charts for sentiment and troll distribution"""
-    # Create figure with two subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+    """Create separate visualizations for sentiment and troll detection"""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     
-    # Calculate sentiment from score
-    df['Clean_Sentiment'] = df['Enhanced Score'].apply(
-        lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
-    )
-    sentiment_counts = df['Clean_Sentiment'].value_counts()
+    # Plot sentiment distribution (using Enhanced Score)
+    sentiment_types = df['Enhanced Score'].apply(
+        lambda score: 'Positive' if score >= 0.05 else 'Negative' if score <= -0.05 else 'Neutral'
+    ).value_counts()
     
-    # Plot sentiment distribution
-    sns.barplot(x=sentiment_counts.index, y=sentiment_counts.values, ax=ax1)
+    sentiment_types.plot(kind='bar', ax=ax1, color=['green', 'gray', 'red'])
     ax1.set_title('Sentiment Distribution')
+    ax1.set_ylabel('Count')
     
     # Plot troll distribution
     troll_counts = df['Is_Troll'].value_counts()
-    sns.barplot(x=['Not Troll', 'Troll'], 
-                y=[troll_counts.get(False, 0), troll_counts.get(True, 0)],
-                ax=ax2)
-    ax2.set_title('Troll Detection Results')
+    colors = ['red' if x else 'green' for x in troll_counts.index]
+    troll_counts.plot(kind='bar', ax=ax2, color=colors)
+    ax2.set_title('Troll Detection Distribution')
+    ax2.set_ylabel('Count')
     
+    plt.tight_layout()
     return fig
 
 # Function to create a sentiment heatmap
@@ -738,36 +737,9 @@ elif page == "Upload Data":
                         )
 
                     if st.button("Save Correction"):
-                        # Update sentiment score based on corrected sentiment
-                        if corrected_sentiment == "Positive":
-                            new_score = 1.0
-                        elif corrected_sentiment == "Negative":
-                            new_score = -1.0
-                        else:  # Neutral
-                            new_score = 0.0
-                            
-                        # Update only the score
-                        comments_df.loc[selected_comment_idx, 'Enhanced Score'] = new_score
-                        
-                        # Update troll status separately
-                        comments_df.loc[selected_comment_idx, 'Is_Troll'] = (is_troll_corrected == "Yes")
-                        comments_df.loc[selected_comment_idx, 'Troll Score'] = 0.9 if is_troll_corrected == "Yes" else 0.0
-                        
-                        # Save to corrections file
-                        correction_data = pd.DataFrame({
-                            'Comment': [comments_df.loc[selected_comment_idx, 'Comment']],
-                            'Corrected_Sentiment': [corrected_sentiment],
-                            'Is_Troll': [is_troll_corrected == "Yes"]
-                        })
-                        
-                        try:
-                            existing_corrections = pd.read_csv('sentiment_corrections.csv')
-                            correction_data = pd.concat([existing_corrections, correction_data])
-                        except:
-                            pass
-                        
-                        correction_data.to_csv('sentiment_corrections.csv', index=False)
-                        st.success(f"Comment updated - Sentiment: {corrected_sentiment}, Troll Status: {is_troll_corrected}")
+                        # Update sentiment correction without mixing troll status
+                        updated_df = update_sentiment_correction(comments_df, selected_comment_idx, corrected_sentiment)
+                        st.success(f"Comment updated - Sentiment: {corrected_sentiment}, Troll Status: {'🚨' if updated_df['Is_Troll'].iloc[0] else 'Not a Troll'}")
                     
                     # Add language detection information
                     st.subheader("Language Information")
@@ -1108,36 +1080,9 @@ elif page == "Fetch TikTok Comments":
                             )
 
                         if st.button("Save Correction"):
-                            # Update sentiment score based on corrected sentiment
-                            if corrected_sentiment == "Positive":
-                                new_score = 1.0
-                            elif corrected_sentiment == "Negative":
-                                new_score = -1.0
-                            else:  # Neutral
-                                new_score = 0.0
-                                
-                            # Update only the score
-                            comments_df.loc[selected_comment_idx, 'Enhanced Score'] = new_score
-                            
-                            # Update troll status separately
-                            comments_df.loc[selected_comment_idx, 'Is_Troll'] = (is_troll_corrected == "Yes")
-                            comments_df.loc[selected_comment_idx, 'Troll Score'] = 0.9 if is_troll_corrected == "Yes" else 0.0
-                            
-                            # Save to corrections file
-                            correction_data = pd.DataFrame({
-                                'Comment': [comments_df.loc[selected_comment_idx, 'Comment']],
-                                'Corrected_Sentiment': [corrected_sentiment],
-                                'Is_Troll': [is_troll_corrected == "Yes"]
-                            })
-                            
-                            try:
-                                existing_corrections = pd.read_csv('sentiment_corrections.csv')
-                                correction_data = pd.concat([existing_corrections, correction_data])
-                            except:
-                                pass
-                            
-                            correction_data.to_csv('sentiment_corrections.csv', index=False)
-                            st.success(f"Comment updated - Sentiment: {corrected_sentiment}, Troll Status: {is_troll_corrected}")
+                            # Update sentiment correction without mixing troll status
+                            updated_df = update_sentiment_correction(comments_df, selected_comment_idx, corrected_sentiment)
+                            st.success(f"Comment updated - Sentiment: {corrected_sentiment}, Troll Status: {'🚨' if updated_df['Is_Troll'].iloc[0] else 'Not a Troll'}")
                         
                         # Add language detection information
                         st.subheader("Language Information")
@@ -1570,46 +1515,46 @@ if __name__ == "__main__":
 
 # When processing comments
 def process_comments(comments_df):
-    """Process comments with completely separated sentiment and troll detection"""
-    # Apply sentiment analysis and troll detection SEPARATELY
-    troll_results = comments_df['Comment'].apply(
-        lambda text: analyze_comment_with_trolling(text, language_mode)
-    )
-
-    # Store results in COMPLETELY separate columns
-    comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
-    comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
-    comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
-
-    # Create display DataFrame
+    """Process comments with separate sentiment and troll detection"""
+    # Create display DataFrame with clean sentiment
     display_df = pd.DataFrame()
     display_df['Comment'] = comments_df['Comment']
     
-    # Clean sentiment display - NO TROLL INFO
-    display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
-        lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
-    )
+    # Calculate clean sentiment type from score
+    def get_sentiment_type(score):
+        if score >= 0.05:
+            return f"Positive ({score:.2f})"
+        elif score <= -0.05:
+            return f"Negative ({score:.2f})"
+        return f"Neutral ({score:.2f})"
     
-    # Completely separate troll column
-    display_df['Troll Status'] = comments_df.apply(
-        lambda row: f"🚨 ({row['Troll Score']:.2f})" if row['Is_Troll'] else "",
-        axis=1
-    )
+    # Add clean sentiment column
+    display_df['Sentiment'] = comments_df['Enhanced Score'].apply(get_sentiment_type)
+    
+    # Add separate troll alert column
+    display_df['Troll Alert'] = comments_df['Is_Troll'].apply(lambda x: '🚨' if x else '')
+    
+    # Add troll score for transparency
+    display_df['Troll Score'] = comments_df['Troll Score'].apply(lambda x: f"{x:.2f}" if x > 0 else "")
     
     return display_df
 
 def update_sentiment_correction(comments_df, selected_comment_idx, corrected_sentiment):
-    """Update sentiment score based on corrected sentiment"""
-    # Update sentiment score based on corrected sentiment
-    if corrected_sentiment == "Positive":
-        new_score = 1.0
-    elif corrected_sentiment == "Negative":
-        new_score = -1.0
-    else:  # Neutral
-        new_score = 0.0
-        
-    # Update only the score
-    comments_df.loc[selected_comment_idx, 'Enhanced Score'] = new_score
+    """Update sentiment correction without mixing troll status"""
+    # Map sentiment labels to scores
+    sentiment_scores = {
+        'Positive': 0.8,
+        'Neutral': 0.0,
+        'Negative': -0.8
+    }
+    
+    # Update only the sentiment score
+    comments_df.loc[selected_comment_idx, 'Enhanced Score'] = sentiment_scores[corrected_sentiment]
+    
+    # Create updated display DataFrame
+    display_df = process_comments(comments_df)
+    
+    return display_df
 
 def calculate_market_metrics(comments_df):
     """Calculate market metrics using clean sentiment scores"""
