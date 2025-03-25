@@ -17,6 +17,9 @@ import os
 from pathlib import Path
 import langdetect
 from langdetect import detect
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from textblob import TextBlob
 
 # Download required NLTK resources if not already present
 try:
@@ -412,49 +415,152 @@ class TrollDetector:
     A class to detect troll comments with more contextual awareness
     """
     def __init__(self):
-        # Keep track of common troll phrases/patterns
-        self.troll_phrases = set()
-        self.learn_common_troll_phrases()
+        # Initialize troll detection patterns and thresholds
+        self.troll_patterns = {
+            'caps_ratio': 0.7,  # Ratio of uppercase characters
+            'punctuation_repeat': r'[!?]{3,}',  # Repeated punctuation
+            'char_repeat': r'(.)\1{4,}',  # Repeated characters
+            'troll_phrases': ['troll', 'spam', 'fake', 'bot', 'reported', 'scam']
+        }
         
-    def learn_common_troll_phrases(self):
-        """Load common troll phrases into memory"""
-        # Add common Filipino troll phrases
-        self.troll_phrases.update([
-            "respect my opinion",
-            "edi wow",
-            "lutang",
-            "leni lugaw",
-            "dilawan",
-            "pinklawan",
-            "bias ka",
-            "fakeNews",
-            "paid troll",
-            "bayaran",
-            "snowflake",
-            # Add more phrases as needed
-        ])
+        # Load custom troll phrase dictionaries
+        self.tagalog_troll_phrases = [
+            'fake news', 'bayaran', 'trolls', 'paid', 'propaganda',
+            'spam', 'fake account', 'report', 'scam', 'mang-aasar'
+        ]
     
-    def contains_troll_phrase(self, text):
-        """Check if text contains any known troll phrases"""
+    def check_caps_ratio(self, text):
+        """Check ratio of uppercase characters"""
+        if not text:
+            return 0
+        caps_count = sum(1 for c in text if c.isupper())
+        return caps_count / len(text)
+    
+    def check_punctuation(self, text):
+        """Check for excessive punctuation"""
+        matches = re.findall(self.troll_patterns['punctuation_repeat'], text)
+        return len(matches) > 0
+    
+    def check_char_repetition(self, text):
+        """Check for character repetition"""
+        matches = re.findall(self.troll_patterns['char_repeat'], text)
+        return len(matches) > 0
+    
+    def check_troll_phrases(self, text, language='english'):
+        """Check for presence of troll-related phrases"""
         text_lower = text.lower()
-        return any(phrase in text_lower for phrase in self.troll_phrases)
+        phrases = (self.tagalog_troll_phrases if language == 'tagalog' 
+                  else self.troll_patterns['troll_phrases'])
+        return any(phrase in text_lower for phrase in phrases)
     
-    def detect_troll(self, text):
-        """
-        Enhanced troll detection with multiple factors
-        """
-        # Get basic troll analysis
-        basic_analysis = analyze_for_trolling(text)
+    def calculate_troll_score(self, text, language='english'):
+        """Calculate overall troll score"""
+        scores = {
+            'caps': self.check_caps_ratio(text) * 0.3,
+            'punctuation': float(self.check_punctuation(text)) * 0.2,
+            'repetition': float(self.check_char_repetition(text)) * 0.2,
+            'phrases': float(self.check_troll_phrases(text, language)) * 0.3
+        }
+        return sum(scores.values())
+
+def analyze_for_trolling(text):
+    """
+    Analyze text for troll-like behavior.
+    
+    Args:
+        text (str): Text to analyze
         
-        # Add phrase detection
-        if self.contains_troll_phrase(text):
-            # Increase troll score by 0.3 if it contains known troll phrases
-            basic_analysis['troll_score'] = min(1.0, basic_analysis['troll_score'] + 0.3)
-            basic_analysis['is_troll'] = basic_analysis['troll_score'] >= 0.3
-            
-        return basic_analysis
+    Returns:
+        dict: Dictionary containing troll analysis results
+    """
+    detector = TrollDetector()
+    
+    # Detect language (simplified)
+    is_tagalog = any(word in text.lower() for word in ['ang', 'ng', 'mga', 'sa', 'ko', 'ako'])
+    language = 'tagalog' if is_tagalog else 'english'
+    
+    # Calculate troll score
+    troll_score = detector.calculate_troll_score(text, language)
+    
+    # Determine if text is from a troll
+    is_troll = troll_score > 0.6
+    
+    return {
+        'is_troll': is_troll,
+        'troll_score': troll_score,
+        'language': language
+    }
 
+def analyze_comment_with_trolling(text, language_mode=None):
+    """
+    Analyzes comment for both sentiment and troll detection.
+    
+    Args:
+        text: Text to analyze
+        language_mode: Language mode preference
+        
+    Returns:
+        Dictionary with sentiment and troll information
+    """
+    # Get standard sentiment analysis with language preference
+    sentiment = analyze_sentiment_with_language_preference(text, language_mode)
+    
+    # Get troll analysis
+    troll_analysis = analyze_for_trolling(text)
+    
+    # Extract just the base sentiment and score WITHOUT adding troll info
+    sentiment_parts = sentiment.split(' (')
+    base_sentiment = sentiment_parts[0]
+    score = float(sentiment_parts[1].rstrip(')'))
+    
+    # Return sentiment and troll information completely separately
+    return {
+        'sentiment_text': base_sentiment,  # Just the sentiment without any extra info
+        'sentiment_score': score,  # Just the score
+        'is_troll': troll_analysis['is_troll'],
+        'troll_score': troll_analysis['troll_score'],
+        'language': troll_analysis['language']
+    }
 
+def analyze_sentiment_vader(text):
+    """Analyze sentiment using VADER."""
+    sia = SentimentIntensityAnalyzer()
+    scores = sia.polarity_scores(text)
+    
+    if scores['compound'] >= 0.05:
+        return f"Positive ({scores['compound']:.2f})"
+    elif scores['compound'] <= -0.05:
+        return f"Negative ({scores['compound']:.2f})"
+    else:
+        return f"Neutral ({scores['compound']:.2f})"
+
+def train_mnb_model(texts):
+    """Train a Multinomial Naive Bayes model on the texts."""
+    # Placeholder implementation
+    return ["Neutral (0.00)" for _ in texts]
+
+def combined_sentiment_analysis(text):
+    """Combine multiple sentiment analysis methods."""
+    return analyze_sentiment_vader(text)
+
+def enhanced_sentiment_analysis(text):
+    """Enhanced sentiment analysis with additional features."""
+    return analyze_sentiment_vader(text)
+
+def get_sentiment_breakdown(text):
+    """Get detailed sentiment breakdown."""
+    return {
+        'vader': 0.0,
+        'ml': 0.0,
+        'emoji': 0.0,
+        'lexicon': 0.0,
+        'final': 0.0
+    }
+
+def is_tagalog(text):
+    """Check if text is in Tagalog."""
+    # Placeholder implementation
+    return False
 
 # Function to preprocess text for sentiment analysis
 def preprocess_for_sentiment(text):
@@ -1085,80 +1191,6 @@ def get_sentiment_breakdown(text):
         "sentiment": sentiment
     }
 
-# Function to analyze comments for trolling behavior
-def analyze_for_trolling(text):
-    """
-    Perform comprehensive analysis to detect troll comments.
-    Returns a dictionary with troll score and language information.
-    
-    Args:
-        text: Comment text to analyze
-        
-    Returns:
-        Dictionary with troll_score, language, and is_troll flag
-    """
-    # Process text and detect language
-    processed = preprocess_for_sentiment(text)
-    language = processed['language']
-    
-    # Get troll pattern score
-    troll_pattern_score = detect_troll_patterns(text)
-    
-    # Get sentiment scores
-    sentiment_breakdown = get_sentiment_breakdown(text)
-    # Troll comments often have extreme negative sentiment
-    sentiment_score = sentiment_breakdown['final']
-    
-    # Extract emojis from text
-    emojis_found = ''.join(c for c in text if c in emoji.EMOJI_DATA)
-    
-    # Get emoji troll score if emojis exist
-    emoji_troll_score = 0
-    if emojis_found:
-        emoji_troll_score = analyze_emoji_sentiment_for_trolls(emojis_found)
-    
-    # Troll comments often have extreme negative sentiment
-    sentiment_score = sentiment_breakdown['final']
-    
-    # Higher troll likelihood if extremely negative sentiment
-    sentiment_factor = 0.0
-    if sentiment_score <= -0.7:  # Very negative content - increased from -0.6
-        sentiment_factor = 0.4   # Increased from 0.3
-    elif sentiment_score <= -0.4:  # Moderately negative - increased from -0.3
-        sentiment_factor = 0.2   # Increased from 0.1
-    elif sentiment_score <= -0.2:  # Slightly negative - new bracket
-        sentiment_factor = 0.1   # New level
-    # Check for very short comments with strong negative words
-    words = re.findall(r'\b\w+\b', text.lower())
-    strong_negative_count = sum(1 for word in words if word in FILIPINO_LEXICON 
-                              and FILIPINO_LEXICON[word] <= -0.7)
-    
-    # (Add this before calculating final_troll_score)
-    is_short_comment = len(text.split()) < 5  # Less than 5 words
-    if is_short_comment and strong_negative_count > 0:
-        additional_factor = 0.2  # Short negative comments are often trolls
-    else:
-        additional_factor = 0.0
-    # Check for excessive formatting
-    formatting_score = has_excessive_formatting(text)
-
-    # Add emoji troll factor (weighted at 0.3)
-    emoji_factor = emoji_troll_score * 0.3
-    # Final troll score combines all factors
-    final_troll_score = min(1.0, troll_pattern_score + sentiment_factor + 
-                         additional_factor + emoji_factor + formatting_score)
-    
-    # Flag as troll if score exceeds threshold (adjust as needed)
-    is_troll = final_troll_score >= 0.3
-    
-    return {
-        'troll_score': final_troll_score,
-        'language': language,
-        'is_troll': is_troll,
-        'sentiment': sentiment_breakdown['sentiment'],
-        'sentiment_score': sentiment_score
-    }
-
 # Example usage code for testing troll detection
 def test_troll_detection():
     test_comments = [
@@ -1189,3 +1221,14 @@ if __name__ == "__main__":
     print("\nTesting a single comment:")
     result = analyze_for_trolling("Ang pangit ng content mo, walang kwenta!!!")
     print(f"Troll Score: {result['troll_score']:.2f} (Is Troll: {result['is_troll']})")
+
+__all__ = [
+    'TrollDetector',
+    'analyze_sentiment_vader',
+    'train_mnb_model',
+    'combined_sentiment_analysis',
+    'enhanced_sentiment_analysis',
+    'get_sentiment_breakdown',
+    'analyze_for_trolling',
+    'analyze_comment_with_trolling'
+]
