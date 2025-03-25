@@ -719,18 +719,24 @@ elif page == "Upload Data":
                     # Display data
                     st.subheader("Processed Comments")
                     
-                    # Create two columns for sentiment and troll data
-                    col1, col2 = st.columns(2)
+                    # Create three columns for sentiment, troll data, and additional info
+                    col1, col2, col3 = st.columns(3)  # Changed to 3 columns
                     
                     with col1:
-                        st.write("**Sentiment Analysis Results**")
-                        # Show sentiment columns including Enhanced Sentiment
-                        sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment', 'Troll Sentiment']]
-                        st.dataframe(sentiment_df)
+                        st.write("**Basic Sentiment Analysis**")
+                        # Show only basic sentiment columns
+                        basic_sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment']]
+                        st.dataframe(basic_sentiment_df)
                     
                     with col2:
+                        st.write("**Enhanced Sentiment**")
+                        # Show only enhanced sentiment
+                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']]
+                        st.dataframe(enhanced_df)
+                    
+                    with col3:
                         st.write("**Troll Detection Results**")
-                        troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score']].copy()
+                        troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score', 'Troll Sentiment']].copy()
                         # Add a color-coded risk level
                         troll_df['Risk Level'] = pd.cut(troll_df['Troll Score'], 
                             bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
@@ -984,18 +990,24 @@ elif page == "Fetch TikTok Comments":
                         # Display data
                         st.subheader("Processed Comments")
                         
-                        # Create two columns for sentiment and troll data
-                        col1, col2 = st.columns(2)
+                        # Create three columns for sentiment, troll data, and additional info
+                        col1, col2, col3 = st.columns(3)  # Changed to 3 columns
                         
                         with col1:
-                            st.write("**Sentiment Analysis Results**")
-                            # Show sentiment columns including Enhanced Sentiment
-                            sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment', 'Troll Sentiment']]
-                            st.dataframe(sentiment_df)
+                            st.write("**Basic Sentiment Analysis**")
+                            # Show only basic sentiment columns
+                            basic_sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment']]
+                            st.dataframe(basic_sentiment_df)
                         
                         with col2:
+                            st.write("**Enhanced Sentiment**")
+                            # Show only enhanced sentiment
+                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']]
+                            st.dataframe(enhanced_df)
+                        
+                        with col3:
                             st.write("**Troll Detection Results**")
-                            troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score']].copy()
+                            troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score', 'Troll Sentiment']].copy()
                             # Add a color-coded risk level
                             troll_df['Risk Level'] = pd.cut(troll_df['Troll Score'], 
                                 bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
