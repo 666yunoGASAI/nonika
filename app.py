@@ -113,15 +113,15 @@ def analyze_comment_with_trolling(text, language_mode=None):
     Analyzes comment for both sentiment and troll detection.
     Returns completely separate results.
     """
-    # Get standard sentiment analysis with language preference
-    sentiment_score = analyze_sentiment_with_language_preference(text, language_mode)
+    # Get clean sentiment score (-1 to 1)
+    sentiment_score = analyze_sentiment_score(text)
     
     # Get troll analysis separately
     troll_analysis = analyze_for_trolling(text)
     
     # Return completely separate results
     return {
-        'sentiment_score': sentiment_score,
+        'sentiment_score': sentiment_score,  # Just the raw score
         'is_troll': troll_analysis['is_troll'],
         'troll_score': troll_analysis['troll_score']
     }
@@ -1516,26 +1516,33 @@ if __name__ == "__main__":
 # When processing comments
 def process_comments(comments_df):
     """Process comments with separate sentiment and troll detection"""
-    # Create display DataFrame with clean sentiment
+    # Create new DataFrame for display
     display_df = pd.DataFrame()
     display_df['Comment'] = comments_df['Comment']
     
-    # Calculate clean sentiment type from score
-    def get_sentiment_type(score):
-        if score >= 0.05:
-            return f"Positive ({score:.2f})"
-        elif score <= -0.05:
-            return f"Negative ({score:.2f})"
-        return f"Neutral ({score:.2f})"
+    # For each comment, get sentiment and troll info
+    results = []
+    for comment in comments_df['Comment']:
+        analysis = analyze_comment_with_trolling(comment)
+        results.append(analysis)
     
-    # Add clean sentiment column
-    display_df['Sentiment'] = comments_df['Enhanced Score'].apply(get_sentiment_type)
+    # Add sentiment column (calculate type from score)
+    display_df['Sentiment'] = [
+        f"Positive ({r['sentiment_score']:.2f})" if r['sentiment_score'] >= 0.05
+        else f"Negative ({r['sentiment_score']:.2f})" if r['sentiment_score'] <= -0.05
+        else f"Neutral ({r['sentiment_score']:.2f})"
+        for r in results
+    ]
     
     # Add separate troll alert column
-    display_df['Troll Alert'] = comments_df['Is_Troll'].apply(lambda x: '🚨' if x else '')
+    display_df['Troll Alert'] = [
+        '🚨' if r['is_troll'] else ''
+        for r in results
+    ]
     
-    # Add troll score for transparency
-    display_df['Troll Score'] = comments_df['Troll Score'].apply(lambda x: f"{x:.2f}" if x > 0 else "")
+    # Store raw scores in hidden columns for calculations
+    display_df['_sentiment_score'] = [r['sentiment_score'] for r in results]
+    display_df['_troll_score'] = [r['troll_score'] for r in results]
     
     return display_df
 
@@ -1549,12 +1556,13 @@ def update_sentiment_correction(comments_df, selected_comment_idx, corrected_sen
     }
     
     # Update only the sentiment score
-    comments_df.loc[selected_comment_idx, 'Enhanced Score'] = sentiment_scores[corrected_sentiment]
+    comments_df.loc[selected_comment_idx, '_sentiment_score'] = sentiment_scores[corrected_sentiment]
     
-    # Create updated display DataFrame
-    display_df = process_comments(comments_df)
+    # Update the display sentiment
+    score = sentiment_scores[corrected_sentiment]
+    comments_df.loc[selected_comment_idx, 'Sentiment'] = f"{corrected_sentiment} ({score:.2f})"
     
-    return display_df
+    return comments_df
 
 def calculate_market_metrics(comments_df):
     """Calculate market metrics using clean sentiment scores"""
