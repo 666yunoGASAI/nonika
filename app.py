@@ -31,6 +31,14 @@ import plotly.graph_objects as go
 import io
 import csv
 import chardet  # You may need to pip install chardet
+# Import market trend analysis functions
+from market_trend_analysis import (
+    calculate_market_trend_score,
+    plot_market_prediction,
+    predict_purchase_volume,
+    generate_market_trend_report,
+    add_market_trends_tab
+)
 
 troll_detector = TrollDetector()
 
