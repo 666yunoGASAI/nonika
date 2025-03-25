@@ -31,7 +31,6 @@ import plotly.graph_objects as go
 import io
 import csv
 import chardet  # You may need to pip install chardet
-# Import market trend analysis functions
 from market_trend_analysis import (
     calculate_market_trend_score,
     plot_market_prediction,
@@ -720,21 +719,25 @@ elif page == "Upload Data":
                 with tab1:
                     # Display data
                     st.subheader("Processed Comments")
-                    col1, col2 = st.columns([2, 1])  # 2:1 ratio for better layout
-
+                    
+                    # Create two columns for sentiment and troll data
+                    col1, col2 = st.columns(2)
+                    
                     with col1:
-                        st.subheader("Sentiment Analysis")
-                        st.dataframe(comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment']])
-
+                        st.write("**Sentiment Analysis Results**")
+                        # Remove troll info from main sentiment display
+                        sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment']]
+                        st.dataframe(sentiment_df)
+                    
                     with col2:
-                        st.subheader("Troll Detection")
+                        st.write("**Troll Detection Results**")
                         troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score']].copy()
-                        # Format the troll score to be more readable
-                        troll_df['Troll Score'] = troll_df['Troll Score'].apply(lambda x: f"{x:.2f}")
-                        # Add a visual indicator for troll comments
-                        troll_df['Status'] = troll_df['Is Troll'].apply(lambda x: "🚫 TROLL" if x else "✅ SAFE")
-                        st.dataframe(troll_df[['Comment', 'Status', 'Troll Score']])
-
+                        # Add a color-coded risk level
+                        troll_df['Risk Level'] = pd.cut(troll_df['Troll Score'], 
+                            bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
+                            labels=['Low', 'Medium', 'High', 'Critical'])
+                        st.dataframe(troll_df.style.apply(lambda x: ['background-color: #ffcdd2' if x['Is Troll'] else '' for i in x], axis=1))
+                    
                     # Allow download of processed data
                     csv = comments_df.to_csv(index=False)
                     st.download_button(
@@ -855,7 +858,7 @@ elif page == "Upload Data":
                     # Statistics
                     st.subheader("Comment Statistics")
                     
-                    # Enhanced stats with troll metrics
+                    # Basic stats
                     stats = {
                         "Total Comments": len(comments_df),
                         "Average Comment Length": int(comments_df['Comment'].apply(len).mean()),
@@ -863,60 +866,37 @@ elif page == "Upload Data":
                         "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                         "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                         "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
+                        "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                         "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                     }
                     
-                    # Add troll statistics section
-                    st.subheader("Troll Analysis")
-                    
-                    # Calculate troll metrics
-                    troll_count = len(comments_df[comments_df['Is Troll'] == True])
-                    high_risk_trolls = len(comments_df[comments_df['Troll Score'] > 0.8])
-                    avg_troll_score = comments_df['Troll Score'].mean()
-                    
-                    # Display troll metrics in columns
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric("Total Troll Comments", troll_count)
-                    col2.metric("High-Risk Trolls", high_risk_trolls)
-                    col3.metric("Average Troll Score", f"{avg_troll_score:.2f}")
-                    
-                    # Create troll score distribution plot
-                    st.subheader("Troll Score Distribution")
-                    fig, ax = plt.subplots(figsize=(10, 5))
-                    sns.histplot(data=comments_df, x='Troll Score', bins=20, ax=ax)
-                    ax.set_title('Distribution of Troll Scores')
-                    ax.set_xlabel('Troll Score')
-                    ax.set_ylabel('Count')
-                    st.pyplot(fig)
-                    
-                    # Add troll pattern analysis
-                    st.subheader("Troll Pattern Analysis")
-                    troll_patterns = {
-                        "ALL CAPS Comments": len(comments_df[comments_df['Comment'].str.isupper()]),
-                        "Excessive Punctuation": len(comments_df[comments_df['Comment'].str.count(r'[!?]{3,}') > 0]),
-                        "Spam-like Repetition": len(comments_df[comments_df['Comment'].str.count(r'(.)\1{4,}') > 0]),
-                        "Known Troll Phrases": len(comments_df[comments_df['Comment'].str.contains(r'(troll|spam|fake|bot)', case=False)])
-                    }
-                    
-                    # Display troll patterns
-                    col1, col2 = st.columns(2)
-                    for i, (pattern, count) in enumerate(troll_patterns.items()):
-                        if i % 2 == 0:
-                            col1.metric(pattern, count)
-                        else:
-                            col2.metric(pattern, count)
-                    
-                    # Display regular statistics
-                    st.subheader("General Statistics")
+                    # Display stats in columns
                     col1, col2, col3, col4 = st.columns(4)
                     col1.metric("Total Comments", stats["Total Comments"])
                     col1.metric("Average Length", stats["Average Comment Length"])
                     col2.metric("Positive Comments", stats["Positive Comments"])
                     col2.metric("Negative Comments", stats["Negative Comments"])
                     col3.metric("Neutral Comments", stats["Neutral Comments"])
-                    col3.metric("Comments with Emojis", stats["Comments with Emojis"])
+                    col3.metric("Troll Comments", stats["Troll Comments"])
+                    col4.metric("Comments with Emojis", stats["Comments with Emojis"])
                     col4.metric("Tagalog Comments", stats["Tagalog Comments"])
-                
+                    
+                    # Hashtag analysis
+                    st.subheader("Hashtag Analysis")
+                    all_hashtags = [tag for tags in comments_df['Hashtags'] for tag in tags]
+                    if all_hashtags:
+                        hashtag_counter = Counter(all_hashtags)
+                        top_hashtags = hashtag_counter.most_common(15)
+                        
+                        hashtag_df = pd.DataFrame(top_hashtags, columns=['Hashtag', 'Count'])
+                        
+                        # Create horizontal bar chart for hashtags
+                        fig, ax = plt.subplots(figsize=(10, 8))
+                        sns.barplot(y=hashtag_df['Hashtag'], x=hashtag_df['Count'], ax=ax, orient='h')
+                        ax.set_title('Top 15 Hashtags')
+                        st.pyplot(fig)
+                    else:
+                        st.info("No hashtags found in the comments.")
                 with tab5:
                     # Add market trends analysis
                     st.subheader("Market Trend Analysis")
@@ -1001,21 +981,25 @@ elif page == "Fetch TikTok Comments":
                     with tab1:
                         # Display data
                         st.subheader("Processed Comments")
-                        col1, col2 = st.columns([2, 1])  # 2:1 ratio for better layout
-
+                        
+                        # Create two columns for sentiment and troll data
+                        col1, col2 = st.columns(2)
+                        
                         with col1:
-                            st.subheader("Sentiment Analysis")
-                            st.dataframe(comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment']])
-
+                            st.write("**Sentiment Analysis Results**")
+                            # Remove troll info from main sentiment display
+                            sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment']]
+                            st.dataframe(sentiment_df)
+                        
                         with col2:
-                            st.subheader("Troll Detection")
+                            st.write("**Troll Detection Results**")
                             troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score']].copy()
-                            # Format the troll score to be more readable
-                            troll_df['Troll Score'] = troll_df['Troll Score'].apply(lambda x: f"{x:.2f}")
-                            # Add a visual indicator for troll comments
-                            troll_df['Status'] = troll_df['Is Troll'].apply(lambda x: "🚫 TROLL" if x else "✅ SAFE")
-                            st.dataframe(troll_df[['Comment', 'Status', 'Troll Score']])
-
+                            # Add a color-coded risk level
+                            troll_df['Risk Level'] = pd.cut(troll_df['Troll Score'], 
+                                bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
+                                labels=['Low', 'Medium', 'High', 'Critical'])
+                            st.dataframe(troll_df.style.apply(lambda x: ['background-color: #ffcdd2' if x['Is Troll'] else '' for i in x], axis=1))
+                        
                         # Allow download of processed data
                         csv = comments_df.to_csv(index=False)
                         st.download_button(
@@ -1140,7 +1124,7 @@ elif page == "Fetch TikTok Comments":
                         # Statistics
                         st.subheader("Comment Statistics")
                         
-                        # Enhanced stats with troll metrics
+                        # Basic stats
                         stats = {
                             "Total Comments": len(comments_df),
                             "Average Comment Length": int(comments_df['Comment'].apply(len).mean()),
@@ -1148,60 +1132,37 @@ elif page == "Fetch TikTok Comments":
                             "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                             "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                             "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
+                            "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
                             "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                         }
                         
-                        # Add troll statistics section
-                        st.subheader("Troll Analysis")
-                        
-                        # Calculate troll metrics
-                        troll_count = len(comments_df[comments_df['Is Troll'] == True])
-                        high_risk_trolls = len(comments_df[comments_df['Troll Score'] > 0.8])
-                        avg_troll_score = comments_df['Troll Score'].mean()
-                        
-                        # Display troll metrics in columns
-                        col1, col2, col3 = st.columns(3)
-                        col1.metric("Total Troll Comments", troll_count)
-                        col2.metric("High-Risk Trolls", high_risk_trolls)
-                        col3.metric("Average Troll Score", f"{avg_troll_score:.2f}")
-                        
-                        # Create troll score distribution plot
-                        st.subheader("Troll Score Distribution")
-                        fig, ax = plt.subplots(figsize=(10, 5))
-                        sns.histplot(data=comments_df, x='Troll Score', bins=20, ax=ax)
-                        ax.set_title('Distribution of Troll Scores')
-                        ax.set_xlabel('Troll Score')
-                        ax.set_ylabel('Count')
-                        st.pyplot(fig)
-                        
-                        # Add troll pattern analysis
-                        st.subheader("Troll Pattern Analysis")
-                        troll_patterns = {
-                            "ALL CAPS Comments": len(comments_df[comments_df['Comment'].str.isupper()]),
-                            "Excessive Punctuation": len(comments_df[comments_df['Comment'].str.count(r'[!?]{3,}') > 0]),
-                            "Spam-like Repetition": len(comments_df[comments_df['Comment'].str.count(r'(.)\1{4,}') > 0]),
-                            "Known Troll Phrases": len(comments_df[comments_df['Comment'].str.contains(r'(troll|spam|fake|bot)', case=False)])
-                        }
-                        
-                        # Display troll patterns
-                        col1, col2 = st.columns(2)
-                        for i, (pattern, count) in enumerate(troll_patterns.items()):
-                            if i % 2 == 0:
-                                col1.metric(pattern, count)
-                            else:
-                                col2.metric(pattern, count)
-                        
-                        # Display regular statistics
-                        st.subheader("General Statistics")
+                        # Display stats in columns
                         col1, col2, col3, col4 = st.columns(4)
                         col1.metric("Total Comments", stats["Total Comments"])
                         col1.metric("Average Length", stats["Average Comment Length"])
                         col2.metric("Positive Comments", stats["Positive Comments"])
                         col2.metric("Negative Comments", stats["Negative Comments"])
                         col3.metric("Neutral Comments", stats["Neutral Comments"])
-                        col3.metric("Comments with Emojis", stats["Comments with Emojis"])
+                        col3.metric("Troll Comments", stats["Troll Comments"])
+                        col4.metric("Comments with Emojis", stats["Comments with Emojis"])
                         col4.metric("Tagalog Comments", stats["Tagalog Comments"])
-                    
+                        
+                        # Hashtag analysis
+                        st.subheader("Hashtag Analysis")
+                        all_hashtags = [tag for tags in comments_df['Hashtags'] for tag in tags]
+                        if all_hashtags:
+                            hashtag_counter = Counter(all_hashtags)
+                            top_hashtags = hashtag_counter.most_common(15)
+                            
+                            hashtag_df = pd.DataFrame(top_hashtags, columns=['Hashtag', 'Count'])
+                            
+                            # Create horizontal bar chart for hashtags
+                            fig, ax = plt.subplots(figsize=(10, 8))
+                            sns.barplot(y=hashtag_df['Hashtag'], x=hashtag_df['Count'], ax=ax, orient='h')
+                            ax.set_title('Top 15 Hashtags')
+                            st.pyplot(fig)
+                        else:
+                            st.info("No hashtags found in the comments.")
                     with tab5:
                         # Add market trends analysis
                         st.subheader("Market Trend Analysis")
