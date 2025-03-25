@@ -465,16 +465,26 @@ def create_wordcloud(text_series):
 def plot_sentiment_distribution(df, sentiment_column):
     """Create a bar chart of sentiment distribution."""
     # Extract sentiment categories without scores
-    categories = df[sentiment_column].apply(lambda x: x.split(' ')[0])
+    # Updated to handle TROLL marker in sentiment text
+    categories = df[sentiment_column].apply(lambda x: 'Troll' if 'TROLL' in x else x.split(' ')[0])
     
     # Count occurrences
     counts = categories.value_counts()
     
     # Create plot
     fig, ax = plt.subplots(figsize=(10, 5))
-    colors = {'Positive': 'green', 'Negative': 'red', 'Neutral': 'gray', 'Troll': 'purple'}
+    colors = {
+        'Positive': 'green', 
+        'Negative': 'red', 
+        'Neutral': 'gray',
+        'Troll': 'purple'  # Distinct color for trolls
+    }
     
-    sns.barplot(x=counts.index, y=counts.values, palette=[colors.get(cat, 'blue') for cat in counts.index], ax=ax)
+    # Create bar plot with custom colors
+    bars = sns.barplot(x=counts.index, y=counts.values, 
+                      palette=[colors.get(cat, 'blue') for cat in counts.index], 
+                      ax=ax)
+    
     ax.set_title('Sentiment Distribution')
     ax.set_ylabel('Count')
     ax.set_xlabel('Sentiment')
@@ -849,7 +859,7 @@ elif page == "Upload Data":
                         "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                         "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                         "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                        "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
+                        "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('TROLL')]),
                         "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                     }
                     
@@ -1075,7 +1085,7 @@ elif page == "Fetch TikTok Comments":
                             "Positive Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Positive')]),
                             "Negative Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Negative')]),
                             "Neutral Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Neutral')]),
-                            "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('Troll')]),
+                            "Troll Comments": len(comments_df[comments_df['Enhanced Sentiment'].str.contains('TROLL')]),
                             "Tagalog Comments": len(comments_df[comments_df['Comment'].apply(is_tagalog)])
                         }
                         
