@@ -705,11 +705,13 @@ elif page == "Upload Data":
                     # Apply combined sentiment analysis
                     comments_df['Combined Sentiment'] = combined_sentiment_analysis(comments_df['Demojized'])
                     
-                    # Apply enhanced sentiment analysis with language preference and troll detection
+                    # Apply enhanced sentiment analysis and troll detection separately
                     troll_results = comments_df['Comment'].apply(
                         lambda text: analyze_comment_with_trolling(text, language_mode)
                     )
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
+
+                    # Store sentiment and troll results separately
+                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' (')[0] + ' (' + x['sentiment_text'].split('(')[1])  # Keep only sentiment part
                     comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                 
@@ -967,11 +969,13 @@ elif page == "Fetch TikTok Comments":
                             # Apply combined sentiment analysis
                             comments_df['Combined Sentiment'] = combined_sentiment_analysis(comments_df['Demojized'])
                             
-                            # Apply enhanced sentiment analysis with language preference and troll detection
+                            # Apply enhanced sentiment analysis and troll detection separately
                             troll_results = comments_df['Comment'].apply(
                                 lambda text: analyze_comment_with_trolling(text, language_mode)
                             )
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
+
+                            # Store sentiment and troll results separately
+                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' (')[0] + ' (' + x['sentiment_text'].split('(')[1])  # Keep only sentiment part
                             comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                     
