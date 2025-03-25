@@ -707,7 +707,8 @@ elif page == "Upload Data":
                     )
 
                     # Store sentiment and troll results as separate columns
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
+                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' ')[0])
+                    comments_df['Enhanced Score'] = troll_results.apply(lambda x: float(x['sentiment_text'].split(' ')[1].strip('()')))
                     comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                     comments_df['Troll Sentiment'] = troll_results.apply(lambda x: f"TROLL ({x['troll_score']:.2f})" if x['is_troll'] else "")
@@ -730,8 +731,9 @@ elif page == "Upload Data":
                     
                     with col2:
                         st.write("**Enhanced Sentiment**")
-                        # Show only enhanced sentiment
-                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']]
+                        # Show enhanced sentiment with score but without troll info
+                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
+                        enhanced_df['Enhanced Sentiment'] = enhanced_df['Enhanced Sentiment'] + ' (' + comments_df['Enhanced Score'].astype(str) + ')'
                         st.dataframe(enhanced_df)
                     
                     with col3:
@@ -978,7 +980,8 @@ elif page == "Fetch TikTok Comments":
                             )
 
                             # Store sentiment and troll results as separate columns
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
+                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'].split(' ')[0])
+                            comments_df['Enhanced Score'] = troll_results.apply(lambda x: float(x['sentiment_text'].split(' ')[1].strip('()')))
                             comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                             comments_df['Troll Sentiment'] = troll_results.apply(lambda x: f"TROLL ({x['troll_score']:.2f})" if x['is_troll'] else "")
@@ -1001,8 +1004,9 @@ elif page == "Fetch TikTok Comments":
                         
                         with col2:
                             st.write("**Enhanced Sentiment**")
-                            # Show only enhanced sentiment
-                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']]
+                            # Show enhanced sentiment with score but without troll info
+                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
+                            enhanced_df['Enhanced Sentiment'] = enhanced_df['Enhanced Sentiment'] + ' (' + comments_df['Enhanced Score'].astype(str) + ')'
                             st.dataframe(enhanced_df)
                         
                         with col3:
