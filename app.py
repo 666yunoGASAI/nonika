@@ -688,9 +688,18 @@ elif page == "Upload Data":
 
                     # Store results in COMPLETELY separate columns
                     comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
+                    comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].apply(
+                        lambda x: x.split(' (TROLL)')[0] if isinstance(x, str) and ' (TROLL)' in x else x
+                    )
                     comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
                     comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
+                
+                # Add this right after getting troll_results
+                st.write("Sample troll_result:", troll_results.iloc[0] if len(troll_results) > 0 else "No results")
+
+                # Add this right after setting Enhanced Sentiment
+                st.write("Sample Enhanced Sentiment:", comments_df['Enhanced Sentiment'].iloc[0] if len(comments_df) > 0 else "No data")
                 
                 # Create tabs for different views
                 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -711,11 +720,9 @@ elif page == "Upload Data":
                         st.write("**Enhanced Sentiment Analysis**")
                         enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score']].copy()
                         
-                        # Create a formatted display column that shows ONLY sentiment and score
+                        # Create a formatted display column that uses completely separate fields
                         enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
-                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})"
-                            if not comments_df.loc[row.name, 'Is_Troll'] else
-                            f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
+                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
                             axis=1
                         )
                         
@@ -1083,9 +1090,18 @@ elif page == "Fetch TikTok Comments":
 
                         # Store results in COMPLETELY separate columns
                         comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
+                        comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].apply(
+                            lambda x: x.split(' (TROLL)')[0] if isinstance(x, str) and ' (TROLL)' in x else x
+                        )
                         comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
                         comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
                         comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
+                    
+                    # Add this right after getting troll_results
+                    st.write("Sample troll_result:", troll_results.iloc[0] if len(troll_results) > 0 else "No results")
+
+                    # Add this right after setting Enhanced Sentiment
+                    st.write("Sample Enhanced Sentiment:", comments_df['Enhanced Sentiment'].iloc[0] if len(comments_df) > 0 else "No data")
                     
                     # Create tabs for different views
                     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -1106,11 +1122,9 @@ elif page == "Fetch TikTok Comments":
                             st.write("**Enhanced Sentiment Analysis**")
                             enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score']].copy()
                             
-                            # Create a formatted display column that shows ONLY sentiment and score
+                            # Create a formatted display column that uses completely separate fields
                             enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
-                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})"
-                                if not comments_df.loc[row.name, 'Is_Troll'] else
-                                f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
+                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
                                 axis=1
                             )
                             
