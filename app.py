@@ -91,30 +91,22 @@ def add_language_settings():
 def analyze_sentiment_with_language_preference(text, language_mode=None):
     """
     Analyze sentiment with language mode preference.
-    Returns ONLY sentiment information, no troll data.
+    Returns ONLY sentiment score, no troll data.
     """
     if language_mode is None:
         language_mode = st.session_state.get('language_mode', "Auto-detect")
     
     if language_mode == "Auto-detect":
         if is_tagalog(text):
-            # Get sentiment only without troll label
-            result = tagalog_enhanced_sentiment_analysis(text)
-            # Remove any troll labels if present
-            result = result.split(' (TROLL)')[0] if ' (TROLL)' in result else result
-            return result
+            return analyze_tagalog_sentiment_score(text)
         else:
-            # Get sentiment only without troll label
-            result = enhanced_sentiment_analysis(text)
-            # Remove any troll labels if present
-            result = result.split(' (TROLL)')[0] if ' (TROLL)' in result else result
-            return result
+            return analyze_english_sentiment_score(text)
     elif language_mode == "English Only":
-        return enhanced_sentiment_analysis(text)
+        return analyze_english_sentiment_score(text)
     elif language_mode == "Tagalog Only":
-        return tagalog_enhanced_sentiment_analysis(text)
+        return analyze_tagalog_sentiment_score(text)
     else:  # Multilingual mode
-        return tagalog_enhanced_sentiment_analysis(text)
+        return analyze_tagalog_sentiment_score(text)
 
 def analyze_comment_with_trolling(text, language_mode=None):
     """
@@ -853,7 +845,7 @@ elif page == "Upload Data":
                         "Average Length": int(comments_df['Comment'].apply(len).mean()),
                         "Emoji Usage": len(comments_df[comments_df['Emojis'] != '']),
                         
-                        # Sentiment stats
+                        # Sentiment stats - calculated from score
                         "Positive": len(comments_df[comments_df['Enhanced Score'] > 0.05]),
                         "Negative": len(comments_df[comments_df['Enhanced Score'] < -0.05]),
                         "Neutral": len(comments_df[comments_df['Enhanced Score'] == 0]),
@@ -1230,7 +1222,7 @@ elif page == "Fetch TikTok Comments":
                             "Average Length": int(comments_df['Comment'].apply(len).mean()),
                             "Emoji Usage": len(comments_df[comments_df['Emojis'] != '']),
                             
-                            # Sentiment stats
+                            # Sentiment stats - calculated from score
                             "Positive": len(comments_df[comments_df['Enhanced Score'] > 0.05]),
                             "Negative": len(comments_df[comments_df['Enhanced Score'] < -0.05]),
                             "Neutral": len(comments_df[comments_df['Enhanced Score'] == 0]),
@@ -1381,11 +1373,6 @@ elif page == "Fetch TikTok Comments":
 elif page == "Sentiment Explorer":
     st.header("Sentiment Analysis Explorer")
     
-    st.write("""
-    This section allows you to explore how our sentiment analysis and troll detection systems work independently.
-    Enter a sample comment to see detailed analysis results.
-    """)
-    
     # Input for testing
     test_comment = st.text_area("Enter a comment to analyze:", "This video is amazing! The tutorial was so helpful 🔥👍")
     
@@ -1502,6 +1489,12 @@ elif page == "Sentiment Explorer":
                 train_mnb_model([test_comment])[0],
                 combined_sentiment_analysis(test_comment),
                 f"{sentiment_type} ({analysis_result['sentiment_score']:.2f})"
+            ],
+            'Troll Status': [
+                'N/A',
+                'N/A',
+                'N/A',
+                'TROLL' if analysis_result['is_troll'] else 'Not a Troll'
             ]
         }
         
@@ -1607,3 +1600,25 @@ def update_sentiment_correction(comments_df, selected_comment_idx, corrected_sen
         
     # Update only the score
     comments_df.loc[selected_comment_idx, 'Enhanced Score'] = new_score
+
+def calculate_market_metrics(comments_df):
+    """Calculate market metrics using clean sentiment scores"""
+    # Filter out troll comments
+    valid_comments = comments_df[~comments_df['Is_Troll']]
+    
+    # Calculate sentiment from scores
+    valid_comments['Clean_Sentiment'] = valid_comments['Enhanced Score'].apply(
+        lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
+    )
+    
+    # Calculate metrics
+    sentiment_counts = valid_comments['Clean_Sentiment'].value_counts()
+    total_valid = len(valid_comments)
+    
+    metrics = {
+        'positive_ratio': sentiment_counts.get('Positive', 0) / total_valid,
+        'negative_ratio': sentiment_counts.get('Negative', 0) / total_valid,
+        'troll_ratio': len(comments_df[comments_df['Is_Troll']]) / len(comments_df)
+    }
+    
+    return metrics
