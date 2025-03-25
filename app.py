@@ -61,6 +61,11 @@ st.set_page_config(
 st.title("TikTok Sentiment Analysis")
 st.caption("Market Trend Classification Dashboard")
 
+# Force clear Streamlit cache
+if st.button("Clear Cache and Reload"):
+    st.cache_data.clear()
+    st.experimental_rerun()
+
 # Functions for language-aware sentiment analysis
 def add_language_settings():
     """Add language settings to the sidebar."""
@@ -120,17 +125,21 @@ def analyze_comment_with_trolling(text, language_mode=None):
     # Get standard sentiment analysis
     sentiment_result = analyze_sentiment_with_language_preference(text, language_mode)
     
+    # AGGRESSIVE CLEANING - Remove ANY troll references before further processing
+    if isinstance(sentiment_result, str):
+        sentiment_result = sentiment_result.replace("(TROLL)", "").strip()
+        
     # Get troll analysis separately
     troll_analysis = analyze_for_trolling(text)
     
     # Extract sentiment and score
     sentiment_parts = sentiment_result.split(' (')
-    base_sentiment = sentiment_parts[0]
+    base_sentiment = sentiment_parts[0].strip()  # Add .strip() to remove extra spaces
     score = float(sentiment_parts[1].rstrip(')'))
     
     # Return completely separate results
     return {
-        'sentiment_type': base_sentiment,
+        'sentiment_type': base_sentiment,  # This should be clean now
         'sentiment_score': score,
         'is_troll': troll_analysis['is_troll'],
         'troll_score': troll_analysis['troll_score']
@@ -688,8 +697,9 @@ elif page == "Upload Data":
 
                     # Store results in COMPLETELY separate columns
                     comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
+                    # STRONGER CLEANING - Use regex to remove any form of (TROLL) with variable spacing
                     comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].apply(
-                        lambda x: x.split(' (TROLL)')[0] if isinstance(x, str) and ' (TROLL)' in x else x
+                        lambda x: re.sub(r'\s*\(\s*TROLL\s*\)\s*', '', str(x)) if isinstance(x, str) else x
                     )
                     comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
                     comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
@@ -718,16 +728,20 @@ elif page == "Upload Data":
                     
                     with col2:
                         st.write("**Enhanced Sentiment Analysis**")
-                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score']].copy()
                         
-                        # Create a formatted display column that uses completely separate fields
-                        enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
-                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
+                        # Create a fresh DataFrame for display
+                        display_df = pd.DataFrame()
+                        display_df['Comment'] = comments_df['Comment']
+                        
+                        # Manually create sentiment display string without using Enhanced Sentiment
+                        display_df['Sentiment'] = comments_df.apply(
+                            lambda row: f"{'Positive' if row['Enhanced Score'] > 0.05 else 'Negative' if row['Enhanced Score'] < -0.05 else 'Neutral'} ({row['Enhanced Score']:.2f})" + 
+                            (f" 🚨" if row['Is_Troll'] else ""), 
                             axis=1
                         )
                         
-                        # Display sentiment data
-                        st.dataframe(enhanced_df[['Comment', 'Formatted Sentiment']])
+                        # Display the clean data
+                        st.dataframe(display_df)
                     
                     with col3:
                         st.write("**Troll Detection Results**")
@@ -1090,8 +1104,9 @@ elif page == "Fetch TikTok Comments":
 
                         # Store results in COMPLETELY separate columns
                         comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
+                        # STRONGER CLEANING - Use regex to remove any form of (TROLL) with variable spacing
                         comments_df['Enhanced Sentiment'] = comments_df['Enhanced Sentiment'].apply(
-                            lambda x: x.split(' (TROLL)')[0] if isinstance(x, str) and ' (TROLL)' in x else x
+                            lambda x: re.sub(r'\s*\(\s*TROLL\s*\)\s*', '', str(x)) if isinstance(x, str) else x
                         )
                         comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
                         comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
@@ -1120,16 +1135,20 @@ elif page == "Fetch TikTok Comments":
                         
                         with col2:
                             st.write("**Enhanced Sentiment Analysis**")
-                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score']].copy()
                             
-                            # Create a formatted display column that uses completely separate fields
-                            enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
-                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})", 
+                            # Create a fresh DataFrame for display
+                            display_df = pd.DataFrame()
+                            display_df['Comment'] = comments_df['Comment']
+                            
+                            # Manually create sentiment display string without using Enhanced Sentiment
+                            display_df['Sentiment'] = comments_df.apply(
+                                lambda row: f"{'Positive' if row['Enhanced Score'] > 0.05 else 'Negative' if row['Enhanced Score'] < -0.05 else 'Neutral'} ({row['Enhanced Score']:.2f})" + 
+                                (f" 🚨" if row['Is_Troll'] else ""), 
                                 axis=1
                             )
                             
-                            # Display sentiment data
-                            st.dataframe(enhanced_df[['Comment', 'Formatted Sentiment']])
+                            # Display the clean data
+                            st.dataframe(display_df)
                         
                         with col3:
                             st.write("**Troll Detection Results**")
