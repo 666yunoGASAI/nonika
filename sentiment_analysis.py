@@ -1069,11 +1069,14 @@ def analyze_sentiment_score(text):
     """
     Returns ONLY a sentiment score between -1 and 1.
     """
-    # Get component scores
-    vader_score = analyze_sentiment_vader(text)
+    # Get VADER score (convert from string format to float)
+    vader_result = analyze_sentiment_vader(text)
+    vader_score = float(vader_result.split('(')[1].strip(')'))
+    
+    # Get lexicon score
     lexicon_score = analyze_lexicon_sentiment(text)
     
-    # Get emoji sentiment if present
+    # Get emoji sentiment
     emoji_text = ''.join(c for c in text if c in emoji.EMOJI_DATA)
     emoji_score = analyze_emoji_sentiment(emoji_text) if emoji_text else 0
     
@@ -1092,4 +1095,4 @@ def analyze_sentiment_score(text):
         lexicon_score * weights['lexicon']
     )
     
-    return final_score
+    return max(min(final_score, 1.0), -1.0)  # Ensure score is between -1 and 1
