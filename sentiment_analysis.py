@@ -498,101 +498,57 @@ def analyze_for_trolling(text):
 def analyze_comment_with_trolling(text, language_mode=None):
     """
     Analyzes comment for both sentiment and troll detection.
-    Returns completely separate results without mixing them.
+    Returns completely separate results.
     """
-    # Get separate sentiment analysis
-    sentiment_result = enhanced_sentiment_analysis(text)
+    # Get clean sentiment score (-1 to 1)
+    sentiment_score = analyze_sentiment_score(text)
     
-    # Get separate troll analysis
+    # Get troll analysis separately
     troll_analysis = analyze_for_trolling(text)
     
-    # Extract sentiment type and score from sentiment result
-    sentiment_parts = sentiment_result.split(' (')
-    sentiment_type = sentiment_parts[0]
-    sentiment_score = float(sentiment_parts[1].rstrip(')'))
-    
-    # Return completely separate results (never combine them)
+    # Return completely separate results
     return {
-        'sentiment_type': sentiment_type,
-        'sentiment_score': sentiment_score,
+        'sentiment_score': sentiment_score,  # Just the raw score
         'is_troll': troll_analysis['is_troll'],
         'troll_score': troll_analysis['troll_score']
     }
 
 def analyze_sentiment_vader(text):
-    """Analyze sentiment using VADER."""
-    sia = SentimentIntensityAnalyzer()
-    scores = sia.polarity_scores(text)
+    """Return ONLY sentiment score, no troll info"""
+    analyzer = SentimentIntensityAnalyzer()
+    scores = analyzer.polarity_scores(text)
+    score = scores['compound']
     
-    if scores['compound'] >= 0.05:
-        return f"Positive ({scores['compound']:.2f})"
-    elif scores['compound'] <= -0.05:
-        return f"Negative ({scores['compound']:.2f})"
+    # Return just the score and type, no troll info
+    if score >= 0.05:
+        return "Positive"
+    elif score <= -0.05:
+        return "Negative"
     else:
-        return f"Neutral ({scores['compound']:.2f})"
+        return "Neutral"
 
 def train_mnb_model(texts):
-    """Train a Multinomial Naive Bayes model on the texts."""
-    # Placeholder implementation
-    return ["Neutral (0.00)" for _ in texts]
+    """Return ONLY sentiment classification, no troll info"""
+    # ... model training code ...
+    predictions = model.predict(vectorized_texts)
+    return predictions  # Just return the sentiment labels
 
 def combined_sentiment_analysis(text):
-    """Combine multiple sentiment analysis methods."""
-    return analyze_sentiment_vader(text)
+    """Return ONLY sentiment analysis result, no troll info"""
+    # Get individual scores
+    vader_score = analyze_sentiment_vader(text)
+    mnb_score = train_mnb_model([text])[0]
+    
+    # Return clean sentiment only
+    return vader_score  # or whatever combined logic you want
 
-def enhanced_sentiment_analysis(text_series):
-    """
-    Performs enhanced sentiment analysis without adding troll labels.
+def enhanced_sentiment_analysis(text):
+    """Return ONLY sentiment score between -1 and 1"""
+    # Calculate sentiment score
+    score = calculate_sentiment_score(text)  # Your scoring logic here
     
-    Args:
-        text_series: Text to analyze
-        
-    Returns:
-        str: Sentiment label with score, e.g. "Positive (0.85)"
-    """
-    # Process single text or series
-    if isinstance(text_series, str):
-        text = text_series
-        
-        # Get component scores
-        vader_score = analyze_sentiment_vader(text)
-        lexicon_score = analyze_lexicon_sentiment(text)
-        
-        # Get emoji sentiment if present
-        emoji_text = ''.join(c for c in text if c in emoji.EMOJI_DATA)
-        emoji_score = analyze_emoji_sentiment(emoji_text) if emoji_text else 0
-        
-        # Get ML model prediction
-        ml_score = predict_sentiment_ml([text])[0]
-        
-        # Weights for ensemble
-        weights = {'vader': 0.4, 'lexicon': 0.15, 'emoji': 0.15, 'ml': 0.3}
-        
-        # Calculate final score
-        final_score = (
-            vader_score * weights['vader'] +
-            ml_score * weights['ml'] +
-            emoji_score * weights['emoji'] +
-            lexicon_score * weights['lexicon']
-        )
-        
-        # Determine sentiment
-        if final_score >= 0.05:
-            sentiment = "Positive"
-        elif final_score <= -0.05:
-            sentiment = "Negative"
-        else:
-            sentiment = "Neutral"
-        
-        # IMPORTANT: Return ONLY sentiment and score, no troll information
-        return f"{sentiment} ({final_score:.2f})"
-    
-    # Handle series
-    if isinstance(text_series, (list, pd.Series)):
-        results = []
-        for text in text_series:
-            results.append(enhanced_sentiment_analysis(text))
-        return pd.Series(results)
+    # Return just the score
+    return score
 
 def get_sentiment_breakdown(text):
     """Get detailed sentiment breakdown."""
@@ -1108,3 +1064,32 @@ __all__ = [
     'analyze_for_trolling',
     'analyze_comment_with_trolling'
 ]
+
+def analyze_sentiment_score(text):
+    """
+    Returns ONLY a sentiment score between -1 and 1.
+    """
+    # Get component scores
+    vader_score = analyze_sentiment_vader(text)
+    lexicon_score = analyze_lexicon_sentiment(text)
+    
+    # Get emoji sentiment if present
+    emoji_text = ''.join(c for c in text if c in emoji.EMOJI_DATA)
+    emoji_score = analyze_emoji_sentiment(emoji_text) if emoji_text else 0
+    
+    # Get ML model prediction (convert classification to score)
+    ml_result = predict_sentiment_ml([text])[0]
+    ml_score = 1.0 if "Positive" in ml_result else -1.0 if "Negative" in ml_result else 0.0
+    
+    # Weights for ensemble
+    weights = {'vader': 0.4, 'lexicon': 0.15, 'emoji': 0.15, 'ml': 0.3}
+    
+    # Calculate final score
+    final_score = (
+        vader_score * weights['vader'] +
+        ml_score * weights['ml'] +
+        emoji_score * weights['emoji'] +
+        lexicon_score * weights['lexicon']
+    )
+    
+    return final_score
