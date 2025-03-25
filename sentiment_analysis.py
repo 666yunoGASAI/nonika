@@ -465,26 +465,30 @@ class TrollDetector:
 
 def analyze_for_trolling(text):
     """
-    Analyze text for troll-like behavior.
+    Analyzes text for trolling behavior.
+    Returns ONLY troll detection results, doesn't modify sentiment.
     
     Args:
-        text (str): Text to analyze
+        text: Text to analyze
         
     Returns:
-        dict: Dictionary containing troll analysis results
+        dict: Dictionary with troll detection results
     """
-    detector = TrollDetector()
+    # Initialize troll detector if not already done
+    if 'troll_detector' not in globals():
+        global troll_detector
+        troll_detector = TrollDetector()
     
-    # Detect language (simplified)
-    is_tagalog = any(word in text.lower() for word in ['ang', 'ng', 'mga', 'sa', 'ko', 'ako'])
-    language = 'tagalog' if is_tagalog else 'english'
+    # Detect language for language-specific troll detection
+    language = detect_language(text)
     
-    # Calculate troll score
-    troll_score = detector.calculate_troll_score(text, language)
+    # Get troll score
+    troll_score = troll_detector.calculate_troll_score(text, language)
     
-    # Determine if text is from a troll
+    # Determine if this is a troll comment based on the score
     is_troll = troll_score > 0.6
     
+    # Return ONLY troll information, don't append to sentiment
     return {
         'is_troll': is_troll,
         'troll_score': troll_score,
@@ -494,32 +498,25 @@ def analyze_for_trolling(text):
 def analyze_comment_with_trolling(text, language_mode=None):
     """
     Analyzes comment for both sentiment and troll detection.
-    
-    Args:
-        text: Text to analyze
-        language_mode: Language mode preference
-        
-    Returns:
-        Dictionary with sentiment and troll information
+    Returns completely separate results without mixing them.
     """
-    # Get standard sentiment analysis with language preference
-    sentiment = analyze_sentiment_with_language_preference(text, language_mode)
+    # Get separate sentiment analysis
+    sentiment_result = enhanced_sentiment_analysis(text)
     
-    # Get troll analysis
+    # Get separate troll analysis
     troll_analysis = analyze_for_trolling(text)
     
-    # Extract just the base sentiment and score WITHOUT adding troll info
-    sentiment_parts = sentiment.split(' (')
-    base_sentiment = sentiment_parts[0]
-    score = float(sentiment_parts[1].rstrip(')'))
+    # Extract sentiment type and score from sentiment result
+    sentiment_parts = sentiment_result.split(' (')
+    sentiment_type = sentiment_parts[0]
+    sentiment_score = float(sentiment_parts[1].rstrip(')'))
     
-    # Return sentiment and troll information completely separately
+    # Return completely separate results (never combine them)
     return {
-        'sentiment_text': base_sentiment,  # Just the sentiment without any extra info
-        'sentiment_score': score,  # Just the score
+        'sentiment_type': sentiment_type,
+        'sentiment_score': sentiment_score,
         'is_troll': troll_analysis['is_troll'],
-        'troll_score': troll_analysis['troll_score'],
-        'language': troll_analysis['language']
+        'troll_score': troll_analysis['troll_score']
     }
 
 def analyze_sentiment_vader(text):
@@ -543,9 +540,59 @@ def combined_sentiment_analysis(text):
     """Combine multiple sentiment analysis methods."""
     return analyze_sentiment_vader(text)
 
-def enhanced_sentiment_analysis(text):
-    """Enhanced sentiment analysis with additional features."""
-    return analyze_sentiment_vader(text)
+def enhanced_sentiment_analysis(text_series):
+    """
+    Performs enhanced sentiment analysis without adding troll labels.
+    
+    Args:
+        text_series: Text to analyze
+        
+    Returns:
+        str: Sentiment label with score, e.g. "Positive (0.85)"
+    """
+    # Process single text or series
+    if isinstance(text_series, str):
+        text = text_series
+        
+        # Get component scores
+        vader_score = analyze_sentiment_vader(text)
+        lexicon_score = analyze_lexicon_sentiment(text)
+        
+        # Get emoji sentiment if present
+        emoji_text = ''.join(c for c in text if c in emoji.EMOJI_DATA)
+        emoji_score = analyze_emoji_sentiment(emoji_text) if emoji_text else 0
+        
+        # Get ML model prediction
+        ml_score = predict_sentiment_ml([text])[0]
+        
+        # Weights for ensemble
+        weights = {'vader': 0.4, 'lexicon': 0.15, 'emoji': 0.15, 'ml': 0.3}
+        
+        # Calculate final score
+        final_score = (
+            vader_score * weights['vader'] +
+            ml_score * weights['ml'] +
+            emoji_score * weights['emoji'] +
+            lexicon_score * weights['lexicon']
+        )
+        
+        # Determine sentiment
+        if final_score >= 0.05:
+            sentiment = "Positive"
+        elif final_score <= -0.05:
+            sentiment = "Negative"
+        else:
+            sentiment = "Neutral"
+        
+        # IMPORTANT: Return ONLY sentiment and score, no troll information
+        return f"{sentiment} ({final_score:.2f})"
+    
+    # Handle series
+    if isinstance(text_series, (list, pd.Series)):
+        results = []
+        for text in text_series:
+            results.append(enhanced_sentiment_analysis(text))
+        return pd.Series(results)
 
 def get_sentiment_breakdown(text):
     """Get detailed sentiment breakdown."""
@@ -1021,176 +1068,6 @@ def combined_sentiment_analysis(text_series):
         
     return pd.Series(results)
 
-# Enhanced sentiment analysis with ensemble approach
-def enhanced_sentiment_analysis(text_series):
-    """
-    Ensemble approach combining multiple sentiment analysis methods.
-    
-    Args:
-        text_series: Pandas Series or string containing text
-    
-    Returns:
-        Combined sentiment results
-    """
-    # Convert to list if it's a single string
-    single_input = False
-    if isinstance(text_series, str):
-        text_series = [text_series]
-        single_input = True
-    
-    results = []
-    
-    for text in text_series:
-        if not isinstance(text, str) or not text:
-            results.append("Neutral (0.00)")
-            continue
-        
-        # Process text for analysis
-        processed = preprocess_for_sentiment(text)
-        clean_text = processed['processed_text']
-        
-        # Get scores from different methods
-        
-        # VADER sentiment (rule-based)
-        vader_sentiment = analyze_sentiment_vader(text)
-        vader_score = float(re.search(r'\(([-+]?\d+\.\d+)\)', vader_sentiment).group(1))
-        
-        # ML model prediction
-        try:
-            ml_sentiment = predict_sentiment_ml(clean_text)
-            ml_score_match = re.search(r'\(([-+]?\d+\.\d+)\)', ml_sentiment)
-            ml_score = float(ml_score_match.group(1)) if ml_score_match else 0.0
-            
-            # Convert categorical to numerical (-1 to 1 scale)
-            if "Positive" in ml_sentiment:
-                ml_score = abs(ml_score)
-            elif "Negative" in ml_sentiment:
-                ml_score = -abs(ml_score)
-            else:
-                ml_score = 0.0
-        except:
-            # If ML prediction fails
-            ml_score = 0.0
-        
-        # Emoji analysis
-        emoji_score = analyze_emoji_sentiment(processed['emojis'])
-        
-        # TikTok lexicon analysis
-        lexicon_score = analyze_lexicon_sentiment(text)
-        
-        # Weight the scores
-        weights = {
-            'vader': 0.4,   # VADER is reliable for social media
-            'ml': 0.3,      # ML model captures patterns
-            'emoji': 0.15,  # Emojis are important in TikTok
-            'lexicon': 0.15 # TikTok-specific language
-        }
-        
-        # Calculate weighted ensemble score
-        final_score = (
-            vader_score * weights['vader'] +
-            ml_score * weights['ml'] +
-            emoji_score * weights['emoji'] +
-            lexicon_score * weights['lexicon']
-        )
-        
-        # Determine sentiment category
-        if final_score >= 0.05:
-            results.append(f"Positive ({final_score:.2f})")
-        elif final_score <= -0.05:
-            results.append(f"Negative ({final_score:.2f})")
-        else:
-            results.append(f"Neutral ({final_score:.2f})")
-    
-    if single_input:
-        return results[0]
-    
-    return pd.Series(results)
-
-# Function to get sentiment scores breakdown
-def get_sentiment_breakdown(text):
-    """
-    Get detailed breakdown of sentiment scores from different methods.
-    
-    Args:
-        text: String text to analyze
-    
-    Returns:
-        Dictionary with sentiment scores from each method
-    """
-    if not isinstance(text, str) or not text:
-        return {
-            "vader": 0.0,
-            "emoji": 0.0,
-            "lexicon": 0.0,
-            "ml": 0.0,
-            "final": 0.0,
-            "sentiment": "Neutral"
-        }
-    
-    # Process text
-    processed = preprocess_for_sentiment(text)
-    
-    # VADER sentiment
-    sid = SentimentIntensityAnalyzer()
-    vader_scores = sid.polarity_scores(text)
-    vader_score = vader_scores['compound']
-    
-    # Emoji sentiment
-    emoji_score = analyze_emoji_sentiment(processed['emojis'])
-    
-    # Lexicon sentiment
-    lexicon_score = analyze_lexicon_sentiment(text)
-    
-    # ML model prediction
-    try:
-        ml_sentiment = predict_sentiment_ml(processed['processed_text'])
-        ml_score_match = re.search(r'\(([-+]?\d+\.\d+)\)', ml_sentiment)
-        ml_score = float(ml_score_match.group(1)) if ml_score_match else 0.0
-        
-        # Convert categorical to numerical (-1 to 1 scale)
-        if "Positive" in ml_sentiment:
-            ml_score = abs(ml_score)
-        elif "Negative" in ml_sentiment:
-            ml_score = -abs(ml_score)
-        else:
-            ml_score = 0.0
-    except:
-        ml_score = 0.0
-    
-    # Weight the scores
-    weights = {
-        'vader': 0.4,
-        'ml': 0.3,
-        'emoji': 0.15,
-        'lexicon': 0.15
-    }
-    
-    # Calculate final score
-    final_score = (
-        vader_score * weights['vader'] +
-        ml_score * weights['ml'] +
-        emoji_score * weights['emoji'] +
-        lexicon_score * weights['lexicon']
-    )
-    
-    # Determine sentiment
-    if final_score >= 0.05:
-        sentiment = "Positive"
-    elif final_score <= -0.05:
-        sentiment = "Negative"
-    else:
-        sentiment = "Neutral"
-    
-    return {
-        "vader": vader_score,
-        "emoji": emoji_score,
-        "lexicon": lexicon_score,
-        "ml": ml_score,
-        "final": final_score,
-        "sentiment": sentiment
-    }
-
 # Example usage code for testing troll detection
 def test_troll_detection():
     test_comments = [
@@ -1210,7 +1087,6 @@ def test_troll_detection():
         print(f"\nComment: {comment}")
         print(f"Language: {result['language']}")
         print(f"Troll Score: {result['troll_score']:.2f} (Is Troll: {result['is_troll']})")
-        print(f"Sentiment: {result['sentiment']} (Score: {result['sentiment_score']:.2f})")
 
 # To run the test when the script is executed directly
 if __name__ == "__main__":
