@@ -135,14 +135,14 @@ def analyze_comment_with_trolling(text, language_mode=None):
     # Extract just the base sentiment and score
     sentiment_parts = sentiment.split(' (')
     base_sentiment = sentiment_parts[0]
-    score = sentiment_parts[1].rstrip(')')
+    score = float(sentiment_parts[1].rstrip(')'))  # Convert score to float
     
     # Return sentiment and troll information separately
     return {
-        'sentiment_text': f"{base_sentiment} ({score})",  # Keep only sentiment and score
+        'sentiment_type': base_sentiment,  # Changed from sentiment_text
+        'sentiment_score': score,  # Added separate score
         'is_troll': troll_analysis['is_troll'],
-        'troll_score': troll_analysis['troll_score'],
-        'language': troll_analysis['language']
+        'troll_score': troll_analysis['troll_score']
     }
 
 
@@ -707,8 +707,9 @@ elif page == "Upload Data":
                     )
 
                     # Store sentiment and troll results as separate columns
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: f"{x['sentiment_text']} ({x['sentiment_score']:.2f})")
-                    comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
+                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
+                    comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
+                    comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                 
                 # Create tabs for different views
@@ -728,17 +729,29 @@ elif page == "Upload Data":
                     
                     with col2:
                         st.write("**Enhanced Sentiment Analysis**")
-                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
-                        st.dataframe(enhanced_df)
+                        enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score', 'Is_Troll']].copy()
+                        
+                        # Create a formatted display column that shows sentiment with score
+                        enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
+                            lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})" + 
+                                      (" [TROLL]" if row['Is_Troll'] else ""), 
+                            axis=1
+                        )
+                        
+                        # Display just the formatted column with correct styling
+                        st.dataframe(enhanced_df[['Comment', 'Formatted Sentiment']].style.apply(
+                            lambda x: ['background-color: #ffcdd2' if enhanced_df.loc[x.name, 'Is_Troll'] else '' for i in range(len(x))], 
+                            axis=1
+                        ))
                     
                     with col3:
                         st.write("**Troll Detection Results**")
-                        troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score']].copy()
+                        troll_df = comments_df[['Comment', 'Is_Troll', 'Troll Score']].copy()
                         # Add a color-coded risk level
                         troll_df['Risk Level'] = pd.cut(troll_df['Troll Score'], 
                             bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
                             labels=['Low', 'Medium', 'High', 'Critical'])
-                        st.dataframe(troll_df.style.apply(lambda x: ['background-color: #ffcdd2' if x['Is Troll'] else '' for i in x], axis=1))
+                        st.dataframe(troll_df.style.apply(lambda x: ['background-color: #ffcdd2' if x['Is_Troll'] else '' for i in x], axis=1))
                     
                     # Allow download of processed data
                     csv = comments_df.to_csv(index=False)
@@ -760,15 +773,25 @@ elif page == "Upload Data":
 
                     # Show current sentiment
                     current_sentiment = comments_df.loc[selected_comment_idx, 'Enhanced Sentiment']
-                    st.write(f"Current sentiment: {current_sentiment}")
+                    current_score = comments_df.loc[selected_comment_idx, 'Enhanced Score']
+                    st.write(f"Current sentiment: {current_sentiment} ({current_score:.2f})")
 
                     # Let user choose new sentiment
                     corrected_sentiment = st.radio("Correct sentiment:", 
                                                   options=["Positive", "Neutral", "Negative", "Troll"])
 
                     if st.button("Save Correction"):
-                        # Save the corrected sentiment with a confidence of 1.0 (manual label)
-                        comments_df.loc[selected_comment_idx, 'Enhanced Sentiment'] = f"{corrected_sentiment} (1.00)"
+                        # Save the corrected sentiment type and score
+                        comments_df.loc[selected_comment_idx, 'Enhanced Sentiment'] = corrected_sentiment
+                        comments_df.loc[selected_comment_idx, 'Enhanced Score'] = 1.0  # Manual labels get high confidence
+                        
+                        # Update troll status
+                        if corrected_sentiment == "Troll":
+                            comments_df.loc[selected_comment_idx, 'Is_Troll'] = True
+                            comments_df.loc[selected_comment_idx, 'Troll Score'] = 0.9  # High troll score
+                        else:
+                            comments_df.loc[selected_comment_idx, 'Is_Troll'] = False
+                            comments_df.loc[selected_comment_idx, 'Troll Score'] = 0.0
                         
                         # Save to a corrections file for future model training
                         correction_data = pd.DataFrame({
@@ -975,8 +998,9 @@ elif page == "Fetch TikTok Comments":
                             )
 
                             # Store sentiment and troll results as separate columns
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: f"{x['sentiment_text']} ({x['sentiment_score']:.2f})")
-                            comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
+                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_type'])
+                            comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
+                            comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
                     
                     # Create tabs for different views
@@ -996,17 +1020,29 @@ elif page == "Fetch TikTok Comments":
                         
                         with col2:
                             st.write("**Enhanced Sentiment Analysis**")
-                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment']].copy()
-                            st.dataframe(enhanced_df)
+                            enhanced_df = comments_df[['Comment', 'Enhanced Sentiment', 'Enhanced Score', 'Is_Troll']].copy()
+                            
+                            # Create a formatted display column that shows sentiment with score
+                            enhanced_df['Formatted Sentiment'] = enhanced_df.apply(
+                                lambda row: f"{row['Enhanced Sentiment']} ({row['Enhanced Score']:.2f})" + 
+                                          (" [TROLL]" if row['Is_Troll'] else ""), 
+                                axis=1
+                            )
+                            
+                            # Display just the formatted column with correct styling
+                            st.dataframe(enhanced_df[['Comment', 'Formatted Sentiment']].style.apply(
+                                lambda x: ['background-color: #ffcdd2' if enhanced_df.loc[x.name, 'Is_Troll'] else '' for i in range(len(x))], 
+                                axis=1
+                            ))
                         
                         with col3:
                             st.write("**Troll Detection Results**")
-                            troll_df = comments_df[['Comment', 'Is Troll', 'Troll Score']].copy()
+                            troll_df = comments_df[['Comment', 'Is_Troll', 'Troll Score']].copy()
                             # Add a color-coded risk level
                             troll_df['Risk Level'] = pd.cut(troll_df['Troll Score'], 
                                 bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
                                 labels=['Low', 'Medium', 'High', 'Critical'])
-                            st.dataframe(troll_df.style.apply(lambda x: ['background-color: #ffcdd2' if x['Is Troll'] else '' for i in x], axis=1))
+                            st.dataframe(troll_df.style.apply(lambda x: ['background-color: #ffcdd2' if x['Is_Troll'] else '' for i in x], axis=1))
                         
                         # Allow download of processed data
                         csv = comments_df.to_csv(index=False)
@@ -1028,15 +1064,25 @@ elif page == "Fetch TikTok Comments":
 
                         # Show current sentiment
                         current_sentiment = comments_df.loc[selected_comment_idx, 'Enhanced Sentiment']
-                        st.write(f"Current sentiment: {current_sentiment}")
+                        current_score = comments_df.loc[selected_comment_idx, 'Enhanced Score']
+                        st.write(f"Current sentiment: {current_sentiment} ({current_score:.2f})")
 
                         # Let user choose new sentiment
                         corrected_sentiment = st.radio("Correct sentiment:", 
                                                       options=["Positive", "Neutral", "Negative", "Troll"])
 
                         if st.button("Save Correction"):
-                            # Save the corrected sentiment with a confidence of 1.0 (manual label)
-                            comments_df.loc[selected_comment_idx, 'Enhanced Sentiment'] = f"{corrected_sentiment} (1.00)"
+                            # Save the corrected sentiment type and score
+                            comments_df.loc[selected_comment_idx, 'Enhanced Sentiment'] = corrected_sentiment
+                            comments_df.loc[selected_comment_idx, 'Enhanced Score'] = 1.0  # Manual labels get high confidence
+                            
+                            # Update troll status
+                            if corrected_sentiment == "Troll":
+                                comments_df.loc[selected_comment_idx, 'Is_Troll'] = True
+                                comments_df.loc[selected_comment_idx, 'Troll Score'] = 0.9  # High troll score
+                            else:
+                                comments_df.loc[selected_comment_idx, 'Is_Troll'] = False
+                                comments_df.loc[selected_comment_idx, 'Troll Score'] = 0.0
                             
                             # Save to a corrections file for future model training
                             correction_data = pd.DataFrame({
