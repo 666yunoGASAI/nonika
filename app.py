@@ -706,10 +706,11 @@ elif page == "Upload Data":
                         lambda text: analyze_comment_with_trolling(text, language_mode)
                     )
 
-                    # Store sentiment and troll results separately
-                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])  # This will now be clean
+                    # Store sentiment and troll results as separate columns
+                    comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
                     comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                     comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
+                    comments_df['Troll Sentiment'] = troll_results.apply(lambda x: f"TROLL ({x['troll_score']:.2f})" if x['is_troll'] else "")
                 
                 # Create tabs for different views
                 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -723,8 +724,8 @@ elif page == "Upload Data":
                     
                     with col1:
                         st.write("**Sentiment Analysis Results**")
-                        # Remove troll info from main sentiment display
-                        sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment']]
+                        # Show sentiment columns including Enhanced Sentiment
+                        sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment', 'Troll Sentiment']]
                         st.dataframe(sentiment_df)
                     
                     with col2:
@@ -970,10 +971,11 @@ elif page == "Fetch TikTok Comments":
                                 lambda text: analyze_comment_with_trolling(text, language_mode)
                             )
 
-                            # Store sentiment and troll results separately
-                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])  # This will now be clean
+                            # Store sentiment and troll results as separate columns
+                            comments_df['Enhanced Sentiment'] = troll_results.apply(lambda x: x['sentiment_text'])
                             comments_df['Is Troll'] = troll_results.apply(lambda x: x['is_troll'])
                             comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
+                            comments_df['Troll Sentiment'] = troll_results.apply(lambda x: f"TROLL ({x['troll_score']:.2f})" if x['is_troll'] else "")
                     
                     # Create tabs for different views
                     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Data View", "Visualizations", "Sentiment Analysis", "Statistics", "Market Trends"])
@@ -987,8 +989,8 @@ elif page == "Fetch TikTok Comments":
                         
                         with col1:
                             st.write("**Sentiment Analysis Results**")
-                            # Remove troll info from main sentiment display
-                            sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment']]
+                            # Show sentiment columns including Enhanced Sentiment
+                            sentiment_df = comments_df[['Comment', 'VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment', 'Enhanced Sentiment', 'Troll Sentiment']]
                             st.dataframe(sentiment_df)
                         
                         with col2:
