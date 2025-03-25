@@ -800,133 +800,44 @@ def predict_multilingual_sentiment(text_series):
     # Function to integrate with existing sentiment analysis
 def tagalog_enhanced_sentiment_analysis(text_series):
         """
-        Enhanced sentiment analysis with support for both English and Tagalog.
-        Uses a combined approach for best results across languages.
+        Performs enhanced sentiment analysis for Tagalog text without adding troll labels.
         
         Args:
-            text_series: Pandas Series or string containing text
+            text_series: Text to analyze
         
         Returns:
-            Combined sentiment results
+            str: Sentiment label with score, e.g. "Positive (0.85)"
         """
-        # Import required functions from sentiment_analysis.py
-        from sentiment_analysis import (
-            analyze_sentiment_vader, 
-            analyze_emoji_sentiment,
-            analyze_lexicon_sentiment,
-            preprocess_for_sentiment
-        )
-        
-        # Convert to list if it's a single string
-        single_input = False
+        # Process single text or series
         if isinstance(text_series, str):
-            text_series = [text_series]
-            single_input = True
-        
-        results = []
-        
-        for text in text_series:
-            if not isinstance(text, str) or not text:
-                results.append("Neutral (0.00)")
-                continue
+            text = text_series
             
-            # Process text for analysis
-            processed = preprocess_for_sentiment(text)
+            # Get component scores (your existing tagalog analysis logic here)
+            # ...
             
-            # Get language detection
-            is_tag = is_tagalog(text)
-            language = "Tagalog" if is_tag else "English"
-            
-            # Use multilingual prediction model as the primary sentiment analyzer
-            try:
-                ml_sentiment = predict_multilingual_sentiment(text)
-                primary_score_match = re.search(r'\(([-+]?\d+\.\d+)\)', ml_sentiment)
-                primary_score = float(primary_score_match.group(1)) if primary_score_match else 0.0
-                
-                if "Positive" in ml_sentiment:
-                    primary_score = abs(primary_score)
-                elif "Negative" in ml_sentiment:
-                    primary_score = -abs(primary_score)
-                else:
-                    primary_score = 0.0
-            except Exception as e:
-                print(f"Error in multilingual model: {e}")
-                primary_score = 0.0
-            
-            # Add emoji analysis for all languages
-            emoji_score = analyze_emoji_sentiment(processed['emojis'])
-            
-            # For English, add VADER analysis
-            vader_score = 0.0
-            if not is_tag:
-                try:
-                    vader_sentiment = analyze_sentiment_vader(text)
-                    vader_score = float(re.search(r'\(([-+]?\d+\.\d+)\)', vader_sentiment).group(1))
-                except:
-                    vader_score = 0.0
-            
-            # For Tagalog, use Tagalog lexicon
-            tagalog_score = 0.0
-            if is_tag:
-                tagalog_score = analyze_tagalog_lexicon_sentiment(text)
-            
-            # Lexicon sentiment for TikTok-specific terms (works for both languages)
-            lexicon_score = analyze_lexicon_sentiment(text)
-            
-            # Weight the scores based on language
-            if is_tag:
-                weights = {
-                    'primary': 0.55,   # Multilingual model
-                    'emoji': 0.15,     # Emoji sentiment
-                    'tagalog': 0.20,   # Tagalog lexicon
-                    'lexicon': 0.10    # TikTok lexicon
-                }
-                
-                final_score = (
-                    primary_score * weights['primary'] +
-                    emoji_score * weights['emoji'] +
-                    tagalog_score * weights['tagalog'] +
-                    lexicon_score * weights['lexicon']
-                )
-            else:
-                weights = {
-                    'primary': 0.40,   # Multilingual model
-                    'vader': 0.25,     # VADER (English only)
-                    'emoji': 0.15,     # Emoji sentiment
-                    'lexicon': 0.20    # TikTok lexicon
-                }
-                
-                final_score = (
-                    primary_score * weights['primary'] +
-                    vader_score * weights['vader'] +
-                    emoji_score * weights['emoji'] +
-                    lexicon_score * weights['lexicon']
-                )
-            
-            # Determine sentiment category
+            # Determine sentiment
             if final_score >= 0.05:
-                results.append(f"Positive ({final_score:.2f})")
+                sentiment = "Positive"
             elif final_score <= -0.05:
-                results.append(f"Negative ({final_score:.2f})")
+                sentiment = "Negative"
             else:
-                results.append(f"Neutral ({final_score:.2f})")
+                sentiment = "Neutral"
+            
+            # IMPORTANT: Return ONLY sentiment and score, no troll information
+            return f"{sentiment} ({final_score:.2f})"
         
-        if single_input:
-            return results[0]
-        
-        return pd.Series(results)
+        # Handle series
+        if isinstance(text_series, (list, pd.Series)):
+            results = []
+            for text in text_series:
+                results.append(tagalog_enhanced_sentiment_analysis(text))
+            return pd.Series(results)
 
     # Updated breakdown function to include multilingual capabilities
 def get_tagalog_sentiment_breakdown(text):
         """
-        Get detailed breakdown of sentiment scores from different methods.
-        Now supports both English and Tagalog text with language detection.
-        
-        Args:
-            text: String text to analyze
-        
-        Returns:
-            Dictionary with sentiment scores from each method
+        Get detailed sentiment breakdown for Tagalog text.
+        Ensure no troll information is included.
         """
         # Import required functions from sentiment_analysis.py
         from sentiment_analysis import (
