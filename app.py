@@ -478,7 +478,7 @@ def plot_sentiment_distribution(df, sentiment_column):
         percentage = 100 * count / total
         ax.text(i, count + 5, f'{percentage:.1f}%', ha='center')
     
-    # Add legend
+    # Add legend with troll category
     legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color, label=cat) 
                       for cat, color in colors.items() if cat in counts.index]
     ax.legend(handles=legend_elements)
