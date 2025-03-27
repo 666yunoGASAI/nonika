@@ -1706,62 +1706,6 @@ elif page == "Sentiment Explorer":
         The systems work independently to ensure accurate classification of both sentiment and troll behavior.
         """)
 
-# Put this function definition BEFORE you call it
-def tagalog_enhanced_sentiment_analysis(text):
-    """
-    A simple sentiment analysis function for Tagalog text.
-    Returns a dictionary with sentiment score and sentiment label.
-    """
-    # Dictionary of positive and negative words in Tagalog
-    positive_words = [
-        'masaya', 'maganda', 'mabuti', 'kahanga-hanga', 'magaling', 'mahusay',
-        'masarap', 'malambot', 'mabait', 'matulungin', 'masigla', 'magalang',
-        'matalino', 'malinis', 'maayos', 'matagumpay', 'mahal', 'ganda', 'galing',
-        'magsaya', 'masaganang', 'pagpalain', 'sulit', 'perpekto'
-    ]
-    
-    negative_words = [
-        'malungkot', 'masama', 'pangit', 'galit', 'takot', 'pagod', 'mahirap',
-        'masakit', 'madumi', 'mabagal', 'magulo', 'mapanganib', 'bastos', 'masaklap',
-        'mahina', 'balisa', 'nabigo', 'kabiguan', 'kamalian', 'problema'
-    ]
-    
-    # Convert text to lowercase for easier matching
-    text_lower = text.lower()
-    
-    # Count positive and negative words
-    positive_count = sum(1 for word in positive_words if word in text_lower)
-    negative_count = sum(1 for word in negative_words if word in text_lower)
-    
-    # Calculate sentiment score
-    score = positive_count - negative_count
-    
-    # Determine sentiment label
-    if score > 0:
-        sentiment = "positive"
-    elif score < 0:
-        sentiment = "negative"
-    else:
-        sentiment = "neutral"
-    
-    # Return result as dictionary
-    return {
-        "score": score,
-        "sentiment": sentiment,
-        "positive_words": positive_count,
-        "negative_words": negative_count,
-        "text": text
-    }
-
-# Now your existing code should work
-st.subheader("Debugging Output")
-st.write("Tagalog sentiment test:")
-test_tag = tagalog_enhanced_sentiment_analysis("Ang ganda naman ng app na ito!")
-st.write(f"Raw output: {test_tag}")
-
-st.write("English sentiment test:")
-# Make sure you have your English analysis function defined too!
-
 # Add this test code to your app.py
 st.subheader("Debugging Output")
 st.write("Tagalog sentiment test:")
