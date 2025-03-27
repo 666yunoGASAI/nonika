@@ -1772,19 +1772,6 @@ def tagalog_enhanced_sentiment_analysis(text):
     # Return formatted string
     return f"{sentiment} ({score:.2f})"
 
-# Move the test code to the end of the file, after all function definitions
-if __name__ == "__main__":
-    # Add debugging output section
-    st.subheader("Debugging Output")
-    
-    st.write("Tagalog sentiment test:")
-    test_tag = tagalog_enhanced_sentiment_analysis("Ang ganda naman ng app na ito!")
-    st.write(f"Raw output: {test_tag}")
-
-    st.write("English sentiment test:")
-    test_eng = enhanced_sentiment_analysis("This app is really great!")
-    st.write(f"Raw output: {test_eng}")
-
 # When processing comments
 def process_comments(comments_df):
     """Process comments with completely separate sentiment and troll detection"""
