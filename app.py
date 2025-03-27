@@ -1002,7 +1002,7 @@ elif page == "Upload Data":
                         
                         st.metric("Troll Comments", f"{troll_count} / {total_count}")
                         st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                        st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                        st.metric("Risk Level", get_troll_risk_level_from_score(troll_percentage))
                     
                     with col2:
                         # Troll Risk Distribution
@@ -1046,7 +1046,7 @@ elif page == "Upload Data":
                             st.metric("Troll Score", f"{troll_score:.2f}")
                         
                         with col2:
-                            risk_level = get_troll_risk_level(troll_score * 100)  # Convert score to percentage
+                            risk_level = get_troll_risk_level_from_score(troll_score * 100)  # Convert score to percentage
                             st.markdown(
                                 f"""
                                 <div style="
@@ -1161,7 +1161,7 @@ elif page == "Upload Data":
                         troll_percentage = (troll_count / len(comments_df)) * 100
                         
                         st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                        st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                        st.metric("Risk Level", get_troll_risk_level_from_score(troll_percentage))
                         
                         # Show troll risk distribution
                         risk_counts = comments_df['Troll_Score'].apply(
@@ -1440,7 +1440,7 @@ elif page == "Fetch TikTok Comments":
                             
                             st.metric("Troll Comments", f"{troll_count} / {total_count}")
                             st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                            st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                            st.metric("Risk Level", get_troll_risk_level_from_score(troll_percentage))
                         
                         with col2:
                             # Troll Risk Distribution
@@ -1484,7 +1484,7 @@ elif page == "Fetch TikTok Comments":
                                 st.metric("Troll Score", f"{troll_score:.2f}")
                             
                             with col2:
-                                risk_level = get_troll_risk_level(troll_score * 100)  # Convert score to percentage
+                                risk_level = get_troll_risk_level_from_score(troll_score * 100)  # Convert score to percentage
                                 st.markdown(
                                     f"""
                                     <div style="
@@ -1599,7 +1599,7 @@ elif page == "Fetch TikTok Comments":
                                 troll_percentage = (troll_count / len(comments_df)) * 100
                                 
                                 st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                                st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                                st.metric("Risk Level", get_troll_risk_level_from_score(troll_percentage))
                                 
                                 # Show troll risk distribution
                                 risk_counts = comments_df['Troll_Score'].apply(
@@ -1718,9 +1718,7 @@ elif page == "Sentiment Explorer":
             troll_score = analysis_result['troll_score']
             
             # Create color-coded risk level
-            risk_level = pd.cut([troll_score], 
-                bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
-                labels=['Low', 'Medium', 'High', 'Critical'])[0]
+            risk_level = get_troll_risk_level_from_score(troll_score * 100)  # Convert score to percentage
             
             risk_colors = {
                 'Low': '#4CAF50',      # Green
@@ -1875,3 +1873,22 @@ def calculate_market_metrics(comments_df):
     }
     
     return metrics
+
+def get_troll_risk_level_from_score(percentage):
+    """
+    Convert a troll percentage score to a risk level string.
+    
+    Args:
+        percentage (float): Percentage of troll likelihood (0-100)
+        
+    Returns:
+        str: Risk level ('Low', 'Medium', 'High', or 'Critical')
+    """
+    if percentage < 30:
+        return "Low"
+    elif percentage < 60:
+        return "Medium"
+    elif percentage < 80:
+        return "High"
+    else:
+        return "Critical"
