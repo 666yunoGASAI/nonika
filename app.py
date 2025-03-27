@@ -109,18 +109,22 @@ def process_comments(comments_df):
     # Process each comment and store individual scores
     for idx, comment in comments_df.iterrows():
         try:
-            # Get VADER score
+            # Get VADER score - handle both numeric and string results
             vader_result = analyze_sentiment_vader(comment['Comment'])
-            display_df.at[idx, 'VADER Score'] = f"{vader_result:.2f}" if isinstance(vader_result, float) else vader_result
+            if isinstance(vader_result, float):
+                display_df.at[idx, 'VADER Score'] = f"{vader_result:.2f}"
+            else:
+                # If it's a string (like "Positive" or "Negative"), store as is
+                display_df.at[idx, 'VADER Score'] = vader_result
             
             # Get MNB score
             mnb_score = train_mnb_model([comment['Comment']])[0]
-            display_df.at[idx, 'MNB Score'] = f"{mnb_score:.2f}"
+            display_df.at[idx, 'MNB Score'] = f"{float(mnb_score):.2f}"
             
             # Get Enhanced score and Troll score
             analysis = analyze_comment_with_trolling(comment['Comment'])
-            display_df.at[idx, 'Enhanced Score'] = f"{analysis['sentiment_score']:.2f}"
-            display_df.at[idx, 'Troll Score'] = f"{analysis['troll_score']:.2f}"
+            display_df.at[idx, 'Enhanced Score'] = f"{float(analysis['sentiment_score']):.2f}"
+            display_df.at[idx, 'Troll Score'] = f"{float(analysis['troll_score']):.2f}"
         except Exception as e:
             st.error(f"Error processing comment {idx}: {str(e)}")
             # Set default values if processing fails
