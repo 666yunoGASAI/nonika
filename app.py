@@ -108,97 +108,13 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
     else:  # Multilingual mode
         return analyze_tagalog_sentiment_score(text)
 
-def analyze_english_sentiment_score(text):
-    """Analyze English text and return raw sentiment score."""
-    # Use VADER for base sentiment
-    vader_score = analyze_sentiment_vader(text)
-    
-    # Convert VADER text output to score if needed
-    if isinstance(vader_score, str):
-        if "Positive" in vader_score:
-            vader_score = 0.8
-        elif "Negative" in vader_score:
-            vader_score = -0.8
-        else:
-            vader_score = 0.0
-    
-    # Get MNB model score
-    mnb_score = float(train_mnb_model([text])[0].split()[0] == "Positive") * 2 - 1  # Convert to -1 to 1 range
-    
-    # Get combined score
-    combined = combined_sentiment_analysis(text)
-    if isinstance(combined, str):
-        if "Positive" in combined:
-            combined_score = 0.8
-        elif "Negative" in combined:
-            combined_score = -0.8
-        else:
-            combined_score = 0.0
-    else:
-        combined_score = combined
-    
-    # Calculate weighted average
-    final_score = (vader_score + mnb_score + combined_score) / 3
-    
-    # Ensure score is between -1 and 1
-    return max(min(final_score, 1.0), -1.0)
-
-def analyze_tagalog_sentiment_score(text):
-    """Analyze Tagalog text and return raw sentiment score."""
-    from textblob import TextBlob
-    
-    # Use TextBlob as base sentiment analyzer
-    blob = TextBlob(text)
-    base_score = blob.sentiment.polarity
-    
-    # Get additional Tagalog-specific features
-    # This is a simplified version - you may want to add more sophisticated Tagalog analysis
-    positive_words = ['maganda', 'mabuti', 'masaya', 'salamat', 'galing']
-    negative_words = ['pangit', 'masama', 'galit', 'ayaw', 'hindi']
-    
-    # Count positive and negative words
-    pos_count = sum(1 for word in text.lower().split() if word in positive_words)
-    neg_count = sum(1 for word in text.lower().split() if word in negative_words)
-    
-    # Adjust score based on word counts
-    word_score = (pos_count - neg_count) / (pos_count + neg_count + 1)  # Add 1 to avoid division by zero
-    
-    # Combine scores with weights
-    final_score = (base_score * 0.7) + (word_score * 0.3)
-    
-    # Ensure score is between -1 and 1
-    return max(min(final_score, 1.0), -1.0)
-
-def analyze_sentiment_score(text, language_mode=None):
-    """
-    Analyze sentiment and return just the raw score between -1 and 1.
-    """
-    if language_mode is None:
-        language_mode = st.session_state.get('language_mode', "Auto-detect")
-    
-    # Get sentiment analysis based on language mode
-    if language_mode == "Auto-detect":
-        if is_tagalog(text):
-            return analyze_tagalog_sentiment_score(text)
-        else:
-            return analyze_english_sentiment_score(text)
-    elif language_mode == "English Only":
-        return analyze_english_sentiment_score(text)
-    elif language_mode == "Tagalog Only":
-        return analyze_tagalog_sentiment_score(text)
-    else:  # Multilingual mode
-        # For multilingual, take the average of both analyses
-        eng_score = analyze_english_sentiment_score(text)
-        tag_score = analyze_tagalog_sentiment_score(text)
-        return (eng_score + tag_score) / 2
-
 def analyze_comment_with_trolling(text, language_mode=None):
     """
     Analyzes comment for both sentiment and troll detection.
     Returns completely separate results.
     """
     # Get clean sentiment score (-1 to 1)
-    sentiment_score = analyze_sentiment_score(text, language_mode)
+    sentiment_score = analyze_sentiment_score(text)
     
     # Get troll analysis separately
     troll_analysis = analyze_for_trolling(text)
@@ -1483,158 +1399,158 @@ elif page == "Fetch TikTok Comments":
                                     """, 
                                     unsafe_allow_html=True
                                 )
+                    
+                    with tab5:
+                        # Statistics
+                        st.subheader("Comment Statistics")
                         
-                        with tab5:
-                            # Statistics
-                            st.subheader("Comment Statistics")
+                        # Basic stats
+                        stats = {
+                            "Total Comments": len(comments_df),
+                            "Average Length": int(comments_df['Comment'].apply(len).mean()),
+                            "Emoji Usage": len(comments_df[comments_df['Emojis'] != '']),
                             
-                            # Basic stats
-                            stats = {
-                                "Total Comments": len(comments_df),
-                                "Average Length": int(comments_df['Comment'].apply(len).mean()),
-                                "Emoji Usage": len(comments_df[comments_df['Emojis'] != '']),
-                                
-                                # Sentiment stats - calculated from score
-                                "Positive": len(comments_df[comments_df['Enhanced Score'] > 0.05]),
-                                "Negative": len(comments_df[comments_df['Enhanced Score'] < -0.05]),
-                                "Neutral": len(comments_df[comments_df['Enhanced Score'] == 0]),
-                                
-                                # Troll stats
-                                "Trolls": len(comments_df[comments_df['Is_Troll'] == True]),
-                                "High Risk": len(comments_df[comments_df['Troll Score'] > 0.8]),
-                                "Medium Risk": len(comments_df[(comments_df['Troll Score'] > 0.6) & (comments_df['Troll Score'] <= 0.8)]),
-                                
-                                # Language stats
-                                "Tagalog": len(comments_df[comments_df['Comment'].apply(is_tagalog)]),
-                                "English": len(comments_df[~comments_df['Comment'].apply(is_tagalog)])
-                            }
+                            # Sentiment stats - calculated from score
+                            "Positive": len(comments_df[comments_df['Enhanced Score'] > 0.05]),
+                            "Negative": len(comments_df[comments_df['Enhanced Score'] < -0.05]),
+                            "Neutral": len(comments_df[comments_df['Enhanced Score'] == 0]),
                             
-                            # Display in organized sections
-                            col1, col2, col3 = st.columns(3)
+                            # Troll stats
+                            "Trolls": len(comments_df[comments_df['Is_Troll'] == True]),
+                            "High Risk": len(comments_df[comments_df['Troll Score'] > 0.8]),
+                            "Medium Risk": len(comments_df[(comments_df['Troll Score'] > 0.6) & (comments_df['Troll Score'] <= 0.8)]),
                             
-                            with col1:
-                                st.subheader("General Stats")
-                                st.metric("Total Comments", stats["Total Comments"])
-                                st.metric("Average Length", stats["Average Length"])
-                                st.metric("With Emojis", stats["Emoji Usage"])
+                            # Language stats
+                            "Tagalog": len(comments_df[comments_df['Comment'].apply(is_tagalog)]),
+                            "English": len(comments_df[~comments_df['Comment'].apply(is_tagalog)])
+                        }
+                        
+                        # Display in organized sections
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.subheader("General Stats")
+                            st.metric("Total Comments", stats["Total Comments"])
+                            st.metric("Average Length", stats["Average Length"])
+                            st.metric("With Emojis", stats["Emoji Usage"])
+                        
+                        with col2:
+                            st.subheader("Sentiment Distribution")
+                            st.metric("Positive", stats["Positive"])
+                            st.metric("Negative", stats["Negative"])
+                            st.metric("Neutral", stats["Neutral"])
+                        
+                        with col3:
+                            st.subheader("Troll Detection")
+                            st.metric("Total Trolls", stats["Trolls"])
+                            st.metric("High Risk", stats["High Risk"])
+                            st.metric("Medium Risk", stats["Medium Risk"])
+                        
+                        # Hashtag analysis
+                        st.subheader("Hashtag Analysis")
+                        all_hashtags = [tag for tags in comments_df['Hashtags'] for tag in tags]
+                        if all_hashtags:
+                            hashtag_counter = Counter(all_hashtags)
+                            top_hashtags = hashtag_counter.most_common(15)
                             
-                            with col2:
-                                st.subheader("Sentiment Distribution")
-                                st.metric("Positive", stats["Positive"])
-                                st.metric("Negative", stats["Negative"])
-                                st.metric("Neutral", stats["Neutral"])
+                            hashtag_df = pd.DataFrame(top_hashtags, columns=['Hashtag', 'Count'])
                             
-                            with col3:
-                                st.subheader("Troll Detection")
-                                st.metric("Total Trolls", stats["Trolls"])
-                                st.metric("High Risk", stats["High Risk"])
-                                st.metric("Medium Risk", stats["Medium Risk"])
+                            # Create horizontal bar chart for hashtags
+                            fig, ax = plt.subplots(figsize=(10, 8))
+                            sns.barplot(y=hashtag_df['Hashtag'], x=hashtag_df['Count'], ax=ax, orient='h')
+                            ax.set_title('Top 15 Hashtags')
+                            st.pyplot(fig)
+                        else:
+                            st.info("No hashtags found in the comments.")
+                    with tab6:
+                        # Market Trends Analysis with separated concerns
+                        st.subheader("Market Analysis Dashboard")
+                        
+                        # Create two columns for main metrics
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.subheader("Sentiment Metrics")
+                            # Calculate metrics excluding trolls
+                            valid_comments = comments_df[~comments_df['Is_Troll']]
+                            valid_comments['Clean_Sentiment'] = valid_comments['Enhanced Score'].apply(
+                                lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
+                            )
+                            market_score = calculate_market_trend_score(comments_df)
                             
-                            # Hashtag analysis
-                            st.subheader("Hashtag Analysis")
-                            all_hashtags = [tag for tags in comments_df['Hashtags'] for tag in tags]
-                            if all_hashtags:
-                                hashtag_counter = Counter(all_hashtags)
-                                top_hashtags = hashtag_counter.most_common(15)
-                                
-                                hashtag_df = pd.DataFrame(top_hashtags, columns=['Hashtag', 'Count'])
-                                
-                                # Create horizontal bar chart for hashtags
-                                fig, ax = plt.subplots(figsize=(10, 8))
-                                sns.barplot(y=hashtag_df['Hashtag'], x=hashtag_df['Count'], ax=ax, orient='h')
-                                ax.set_title('Top 15 Hashtags')
-                                st.pyplot(fig)
-                            else:
-                                st.info("No hashtags found in the comments.")
-                        with tab6:
-                            # Market Trends Analysis with separated concerns
-                            st.subheader("Market Analysis Dashboard")
+                            st.metric("Market Sentiment Score", f"{market_score:.2f}")
+                            st.metric("Valid Comments", f"{len(valid_comments)} / {len(comments_df)}")
                             
-                            # Create two columns for main metrics
-                            col1, col2 = st.columns(2)
+                            # Show sentiment distribution
+                            sentiment_counts = valid_comments['Clean_Sentiment'].value_counts()
+                            fig = px.pie(
+                                values=sentiment_counts.values,
+                                names=sentiment_counts.index,
+                                title="Sentiment Distribution (Excluding Trolls)",
+                                color=sentiment_counts.index,
+                                color_discrete_map={'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
+                            )
+                            st.plotly_chart(fig)
+                        
+                        with col2:
+                            st.subheader("Troll Analysis")
+                            troll_count = len(comments_df[comments_df['Is_Troll']])
+                            troll_percentage = (troll_count / len(comments_df)) * 100
                             
-                            with col1:
-                                st.subheader("Sentiment Metrics")
-                                # Calculate metrics excluding trolls
-                                valid_comments = comments_df[~comments_df['Is_Troll']]
-                                valid_comments['Clean_Sentiment'] = valid_comments['Enhanced Score'].apply(
-                                    lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
-                                )
-                                market_score = calculate_market_trend_score(comments_df)
-                                
-                                st.metric("Market Sentiment Score", f"{market_score:.2f}")
-                                st.metric("Valid Comments", f"{len(valid_comments)} / {len(comments_df)}")
-                                
-                                # Show sentiment distribution
-                                sentiment_counts = valid_comments['Clean_Sentiment'].value_counts()
-                                fig = px.pie(
-                                    values=sentiment_counts.values,
-                                    names=sentiment_counts.index,
-                                    title="Sentiment Distribution (Excluding Trolls)",
-                                    color=sentiment_counts.index,
-                                    color_discrete_map={'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
-                                )
-                                st.plotly_chart(fig)
+                            st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
+                            st.metric("Risk Level", get_troll_risk_level(troll_percentage))
                             
-                            with col2:
-                                st.subheader("Troll Analysis")
-                                troll_count = len(comments_df[comments_df['Is_Troll']])
-                                troll_percentage = (troll_count / len(comments_df)) * 100
-                                
-                                st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                                st.metric("Risk Level", get_troll_risk_level(troll_percentage))
-                                
-                                # Show troll risk distribution
-                                risk_counts = comments_df['Troll Score'].apply(
-                                    lambda x: pd.cut([x], bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
-                                                   labels=['Low', 'Medium', 'High', 'Critical'])[0]
-                                ).value_counts()
-                                
-                                fig = px.bar(
-                                    x=risk_counts.index,
-                                    y=risk_counts.values,
-                                    title="Troll Risk Distribution",
-                                    color=risk_counts.index,
-                                    color_discrete_map={
-                                        'Low': '#4CAF50',
-                                        'Medium': '#FFC107',
-                                        'High': '#FF9800',
-                                        'Critical': '#F44336'
-                                    }
-                                )
-                                st.plotly_chart(fig)
-                                
-                                # Market prediction visualization
-                                st.subheader("Market Prediction")
-                                market_fig = plot_market_prediction(comments_df)
-                                st.plotly_chart(market_fig)
-                                
-                                # Purchase volume prediction
-                                purchase_volume = predict_purchase_volume(comments_df)
-                                st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
-                                
-                                # Detailed market report
-                                st.subheader("Market Analysis Report")
-                                report = generate_market_trend_report(comments_df)
-                                st.markdown(report)
-                                
-                                # Add download button for report
-                                report_csv = pd.DataFrame({
-                                    'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
-                                    'Value': [
-                                        market_score,
-                                        len(valid_comments),
-                                        troll_percentage,
-                                        purchase_volume
-                                    ]
-                                }).to_csv(index=False)
-                                
-                                st.download_button(
-                                    label="Download Market Analysis Report",
-                                    data=report_csv,
-                                    file_name="market_analysis_report.csv",
-                                    mime="text/csv"
-                                )
+                            # Show troll risk distribution
+                            risk_counts = comments_df['Troll Score'].apply(
+                                lambda x: pd.cut([x], bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
+                                               labels=['Low', 'Medium', 'High', 'Critical'])[0]
+                            ).value_counts()
+                            
+                            fig = px.bar(
+                                x=risk_counts.index,
+                                y=risk_counts.values,
+                                title="Troll Risk Distribution",
+                                color=risk_counts.index,
+                                color_discrete_map={
+                                    'Low': '#4CAF50',
+                                    'Medium': '#FFC107',
+                                    'High': '#FF9800',
+                                    'Critical': '#F44336'
+                                }
+                            )
+                            st.plotly_chart(fig)
+                            
+                            # Market prediction visualization
+                            st.subheader("Market Prediction")
+                            market_fig = plot_market_prediction(comments_df)
+                            st.plotly_chart(market_fig)
+                            
+                            # Purchase volume prediction
+                            purchase_volume = predict_purchase_volume(comments_df)
+                            st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
+                            
+                            # Detailed market report
+                            st.subheader("Market Analysis Report")
+                            report = generate_market_trend_report(comments_df)
+                            st.markdown(report)
+                            
+                            # Add download button for report
+                            report_csv = pd.DataFrame({
+                                'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
+                                'Value': [
+                                    market_score,
+                                    len(valid_comments),
+                                    troll_percentage,
+                                    purchase_volume
+                                ]
+                            }).to_csv(index=False)
+                            
+                            st.download_button(
+                                label="Download Market Analysis Report",
+                                data=report_csv,
+                                file_name="market_analysis_report.csv",
+                                mime="text/csv"
+                            )
                 else:
                     st.error("Failed to fetch comments. Please check the video link and try again.")
         else:
@@ -1782,6 +1698,50 @@ elif page == "Sentiment Explorer":
         
         The systems work independently to ensure accurate classification of both sentiment and troll behavior.
         """)
+
+# Add this test code to your app.py
+st.subheader("Debugging Output")
+st.write("Tagalog sentiment test:")
+test_tag = tagalog_enhanced_sentiment_analysis("Ang ganda naman ng app na ito!")
+st.write(f"Raw output: {test_tag}")
+
+st.write("English sentiment test:")
+test_eng = enhanced_sentiment_analysis("This app is really great!")
+st.write(f"Raw output: {test_eng}")
+
+# Add this DIRECTLY after importing the tagalog functions
+# This completely overrides the original function
+def tagalog_enhanced_sentiment_analysis(text_series):
+    """Completely clean replacement for the problematic function."""
+    # Process single text or series
+    if isinstance(text_series, str):
+        text = text_series
+        
+        # Use TextBlob as a simple fallback sentiment analyzer 
+        from textblob import TextBlob
+        blob = TextBlob(text)
+        score = blob.sentiment.polarity
+        
+        # Determine sentiment based on score
+        if score >= 0.05:
+            sentiment = "Positive"
+        elif score <= -0.05:
+            sentiment = "Negative"
+        else:
+            sentiment = "Neutral"
+            
+        # Return clean sentiment output
+        return f"{sentiment} ({score:.2f})"
+    
+    # Handle series
+    if isinstance(text_series, (list, pd.Series)):
+        results = []
+        for text in text_series:
+            results.append(tagalog_enhanced_sentiment_analysis(text))
+        return pd.Series(results)
+
+# Override the imported function with our clean version
+from tagalog_sentiment import get_tagalog_sentiment_breakdown
 
 # Run the app
 if __name__ == "__main__":
