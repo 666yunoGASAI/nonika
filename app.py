@@ -100,6 +100,37 @@ def analyze_sentiment_score(text):
     # Ensure score is between -1 and 1
     return max(min(base_score, 1.0), -1.0)
 
+def process_comments(comments_df):
+    """Process comments with separate sentiment scores and troll score"""
+    # Create fresh DataFrame for display
+    display_df = pd.DataFrame()
+    display_df['Comment'] = comments_df['Comment']
+    
+    # Process each comment and store individual scores
+    for idx, comment in comments_df.iterrows():
+        try:
+            # Get VADER score
+            vader_result = analyze_sentiment_vader(comment['Comment'])
+            display_df.at[idx, 'VADER Score'] = f"{vader_result:.2f}" if isinstance(vader_result, float) else vader_result
+            
+            # Get MNB score
+            mnb_score = train_mnb_model([comment['Comment']])[0]
+            display_df.at[idx, 'MNB Score'] = f"{mnb_score:.2f}"
+            
+            # Get Enhanced score and Troll score
+            analysis = analyze_comment_with_trolling(comment['Comment'])
+            display_df.at[idx, 'Enhanced Score'] = f"{analysis['sentiment_score']:.2f}"
+            display_df.at[idx, 'Troll Score'] = f"{analysis['troll_score']:.2f}"
+        except Exception as e:
+            st.error(f"Error processing comment {idx}: {str(e)}")
+            # Set default values if processing fails
+            display_df.at[idx, 'VADER Score'] = "0.00"
+            display_df.at[idx, 'MNB Score'] = "0.00"
+            display_df.at[idx, 'Enhanced Score'] = "0.00"
+            display_df.at[idx, 'Troll Score'] = "0.00"
+    
+    return display_df
+
 def analyze_comment_with_trolling(text, language_mode=None):
     """
     Analyzes comment for both sentiment and troll detection.
@@ -2002,38 +2033,6 @@ def tagalog_enhanced_sentiment_analysis(text):
     
     # Return formatted string
     return f"{sentiment} ({score:.2f})"
-
-# When processing comments
-def process_comments(comments_df):
-    """Process comments with separate sentiment scores and troll score"""
-    # Create fresh DataFrame for display
-    display_df = pd.DataFrame()
-    display_df['Comment'] = comments_df['Comment']
-    
-    # Process each comment and store individual scores
-    for idx, comment in comments_df.iterrows():
-        try:
-            # Get VADER score
-            vader_result = analyze_sentiment_vader(comment['Comment'])
-            display_df.at[idx, 'VADER Score'] = f"{vader_result:.2f}" if isinstance(vader_result, float) else vader_result
-            
-            # Get MNB score
-            mnb_score = train_mnb_model([comment['Comment']])[0]
-            display_df.at[idx, 'MNB Score'] = f"{mnb_score:.2f}"
-            
-            # Get Enhanced score and Troll score
-            analysis = analyze_comment_with_trolling(comment['Comment'])
-            display_df.at[idx, 'Enhanced Score'] = f"{analysis['sentiment_score']:.2f}"
-            display_df.at[idx, 'Troll Score'] = f"{analysis['troll_score']:.2f}"
-        except Exception as e:
-            st.error(f"Error processing comment {idx}: {str(e)}")
-            # Set default values if processing fails
-            display_df.at[idx, 'VADER Score'] = "0.00"
-            display_df.at[idx, 'MNB Score'] = "0.00"
-            display_df.at[idx, 'Enhanced Score'] = "0.00"
-            display_df.at[idx, 'Troll Score'] = "0.00"
-    
-    return display_df
 
 def update_sentiment_correction(comments_df, selected_comment_idx, corrected_sentiment):
     """Update sentiment correction without mixing troll status"""
