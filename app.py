@@ -1718,34 +1718,19 @@ st.write(f"Raw output: {test_eng}")
 
 # Add this DIRECTLY after importing the tagalog functions
 # This completely overrides the original function
-def tagalog_enhanced_sentiment_analysis(text_series):
-    """Completely clean replacement for the problematic function."""
-    # Process single text or series
-    if isinstance(text_series, str):
-        text = text_series
-        
-        # Use TextBlob as a simple fallback sentiment analyzer 
-        from textblob import TextBlob
-        blob = TextBlob(text)
-        score = blob.sentiment.polarity
-        
-        # Determine sentiment based on score
-        if score >= 0.05:
-            sentiment = "Positive"
-        elif score <= -0.05:
-            sentiment = "Negative"
-        else:
-            sentiment = "Neutral"
-            
-        # Return clean sentiment output
-        return f"{sentiment} ({score:.2f})"
+def tagalog_enhanced_sentiment_analysis(text):
+    """
+    A simple sentiment analysis function for Tagalog text.
+    Returns a dictionary with sentiment score and sentiment label.
+    """
+    # Get base sentiment score
+    score = analyze_tagalog_sentiment_score(text)
     
-    # Handle series
-    if isinstance(text_series, (list, pd.Series)):
-        results = []
-        for text in text_series:
-            results.append(tagalog_enhanced_sentiment_analysis(text))
-        return pd.Series(results)
+    # Convert to sentiment label
+    sentiment = get_sentiment_type(score)
+    
+    # Return formatted string
+    return f"{sentiment} ({score:.2f})"
 
 # Override the imported function with our clean version
 from tagalog_sentiment import get_tagalog_sentiment_breakdown
@@ -1824,3 +1809,54 @@ def calculate_market_metrics(comments_df):
     }
     
     return metrics
+
+def analyze_sentiment_score(text):
+    """
+    Analyze sentiment and return a clean score between -1 and 1.
+    """
+    # Use VADER for base sentiment
+    vader_score = analyze_sentiment_vader(text)
+    
+    # Convert VADER text output to numeric score
+    if 'Positive' in vader_score:
+        base_score = 0.7
+    elif 'Negative' in vader_score:
+        base_score = -0.7
+    else:
+        base_score = 0.0
+        
+    # Adjust score based on emojis and other factors
+    processed = preprocess_text(text)
+    if processed['emojis']:
+        # Simple emoji adjustment
+        positive_emojis = len([e for e in processed['emojis'] if e in '😊😃😄😁👍❤️'])
+        negative_emojis = len([e for e in processed['emojis'] if e in '😢😭😠😡👎'])
+        emoji_adjustment = (positive_emojis - negative_emojis) * 0.1
+        base_score += emoji_adjustment
+    
+    # Ensure score is between -1 and 1
+    return max(min(base_score, 1.0), -1.0)
+
+def get_sentiment_type(score):
+    """
+    Convert sentiment score to sentiment type.
+    """
+    if score > 0.05:
+        return "Positive"
+    elif score < -0.05:
+        return "Negative"
+    else:
+        return "Neutral"
+
+def analyze_english_sentiment_score(text):
+    """
+    Analyze English text sentiment and return score between -1 and 1.
+    """
+    return analyze_sentiment_score(text)
+
+def analyze_tagalog_sentiment_score(text):
+    """
+    Analyze Tagalog text sentiment and return score between -1 and 1.
+    """
+    # For now, use same analysis as English but could be enhanced for Tagalog
+    return analyze_sentiment_score(text)
