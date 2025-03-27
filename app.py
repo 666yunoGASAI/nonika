@@ -134,43 +134,57 @@ def analyze_sentiment_score(text):
 
 def process_comments(comments_df):
     """Process comments with error handling and consistent output format"""
-    display_df = pd.DataFrame()
-    
-    if comments_df is None or len(comments_df) == 0:
-        return display_df
+    try:
+        display_df = pd.DataFrame()
         
-    display_df['Comment'] = comments_df['Comment'].astype(str)
-    
-    for idx, comment in comments_df.iterrows():
-        try:
-            # VADER Score
-            vader_score = analyze_sentiment_vader(comment['Comment'])
-            display_df.at[idx, 'VADER Score'] = f"{float(vader_score):.2f}" if isinstance(vader_score, (int, float)) else vader_score
-            
-            # MNB Score
+        if comments_df is None or len(comments_df) == 0:
+            return pd.DataFrame(columns=['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score', 'Is_Troll'])
+        
+        display_df['Comment'] = comments_df['Comment'].astype(str)
+        
+        for idx, comment in comments_df.iterrows():
             try:
-                mnb_score = train_mnb_model([comment['Comment']])[0]
-                display_df.at[idx, 'MNB Score'] = f"{float(mnb_score):.2f}"
-            except:
-                display_df.at[idx, 'MNB Score'] = "0.00"
-            
-            # Get complete analysis
-            analysis = analyze_comment_with_trolling(comment['Comment'])
-            
-            # Store sentiment and troll scores
-            display_df.at[idx, 'Enhanced Score'] = f"{float(analysis['sentiment_score']):.2f}"
-            display_df.at[idx, 'Troll Score'] = f"{float(analysis['troll_score']):.2f}"
-            display_df.at[idx, 'Is_Troll'] = bool(analysis['is_troll'])
+                # VADER Score
+                vader_score = analyze_sentiment_vader(comment['Comment'])
+                display_df.at[idx, 'VADER Score'] = float(vader_score) if isinstance(vader_score, (int, float)) else 0.0
                 
-        except Exception as e:
-            # Set default values without showing error message
-            display_df.at[idx, 'VADER Score'] = "0.00"
-            display_df.at[idx, 'MNB Score'] = "0.00"
-            display_df.at[idx, 'Enhanced Score'] = "0.00"
-            display_df.at[idx, 'Troll Score'] = "0.00"
-            display_df.at[idx, 'Is_Troll'] = False
-    
-    return display_df
+                # MNB Score
+                try:
+                    mnb_score = train_mnb_model([comment['Comment']])[0]
+                    display_df.at[idx, 'MNB Score'] = float(mnb_score)
+                except:
+                    display_df.at[idx, 'MNB Score'] = 0.0
+                
+                # Get complete analysis
+                analysis = analyze_comment_with_trolling(comment['Comment'])
+                
+                # Store sentiment and troll scores
+                display_df.at[idx, 'Enhanced Score'] = float(analysis['sentiment_score'])
+                display_df.at[idx, 'Troll Score'] = float(analysis['troll_score'])
+                display_df.at[idx, 'Is_Troll'] = bool(analysis['is_troll'])
+                
+                # Add sentiment type columns
+                display_df.at[idx, 'VADER Sentiment'] = get_sentiment_type(display_df.at[idx, 'VADER Score'])
+                display_df.at[idx, 'MNB Sentiment'] = get_sentiment_type(display_df.at[idx, 'MNB Score'])
+                display_df.at[idx, 'Combined Sentiment'] = get_sentiment_type((display_df.at[idx, 'VADER Score'] + display_df.at[idx, 'MNB Score'])/2)
+                display_df.at[idx, 'Enhanced Sentiment'] = get_sentiment_type(display_df.at[idx, 'Enhanced Score'])
+                    
+            except Exception as e:
+                # Set default values without showing error message
+                display_df.at[idx, 'VADER Score'] = 0.0
+                display_df.at[idx, 'MNB Score'] = 0.0
+                display_df.at[idx, 'Enhanced Score'] = 0.0
+                display_df.at[idx, 'Troll Score'] = 0.0
+                display_df.at[idx, 'Is_Troll'] = False
+                display_df.at[idx, 'VADER Sentiment'] = 'Neutral (0.00)'
+                display_df.at[idx, 'MNB Sentiment'] = 'Neutral (0.00)'
+                display_df.at[idx, 'Combined Sentiment'] = 'Neutral (0.00)'
+                display_df.at[idx, 'Enhanced Sentiment'] = 'Neutral (0.00)'
+        
+        return display_df
+    except Exception as e:
+        st.error(f"Error in process_comments: {e}")
+        return pd.DataFrame(columns=['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score', 'Is_Troll'])
 
 def analyze_comment_with_trolling(text, language_mode=None):
     """
@@ -606,35 +620,36 @@ def plot_sentiment_distribution(df):
 def create_sentiment_heatmap(df):
     """Create separate heatmaps for sentiment and troll detection."""
     try:
-        # Add these columns if they don't exist
-        if 'VADER Sentiment' not in df.columns:
-            df['VADER Sentiment'] = df['VADER Score'].apply(lambda x: 'Positive' if float(x) > 0.05 
-                                                          else 'Negative' if float(x) < -0.05 
-                                                          else 'Neutral')
+        # Create a copy to avoid modifying original
+        data = df.copy()
         
-        if 'MNB Sentiment' not in df.columns:
-            df['MNB Sentiment'] = df['MNB Score'].apply(lambda x: 'Positive' if float(x) > 0.05 
-                                                       else 'Negative' if float(x) < -0.05 
-                                                       else 'Neutral')
+        # Ensure all required columns exist
+        required_columns = ['VADER Score', 'MNB Score', 'Enhanced Score']
+        for col in required_columns:
+            if col not in data.columns:
+                data[col] = 0.0
         
-        if 'Combined Sentiment' not in df.columns:
-            df['Combined Sentiment'] = df.apply(lambda row: 
-                'Positive' if (float(row['VADER Score']) + float(row['MNB Score']))/2 > 0.05
-                else 'Negative' if (float(row['VADER Score']) + float(row['MNB Score']))/2 < -0.05
-                else 'Neutral', axis=1)
+        # Convert scores to sentiment types
+        data['VADER Sentiment'] = data['VADER Score'].apply(lambda x: get_sentiment_type(safe_float_convert(x)))
+        data['MNB Sentiment'] = data['MNB Score'].apply(lambda x: get_sentiment_type(safe_float_convert(x)))
+        data['Combined Sentiment'] = data.apply(
+            lambda row: get_sentiment_type((safe_float_convert(row['VADER Score']) + 
+                                          safe_float_convert(row['MNB Score']))/2),
+            axis=1
+        )
         
         # Sentiment comparison heatmap
         sentiment_methods = ['VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment']
         sentiment_matrix = pd.DataFrame()
         
         # Get clean sentiment for Enhanced
-        df['Clean_Sentiment'] = df['Enhanced Score'].apply(
+        data['Clean_Sentiment'] = data['Enhanced Score'].apply(
             lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
         )
         
         for col in sentiment_methods:
-            sentiment_matrix[col] = df[col].apply(lambda x: x.split(' ')[0])
-        sentiment_matrix['Enhanced'] = df['Clean_Sentiment']  # Use Clean_Sentiment instead of Enhanced Sentiment
+            sentiment_matrix[col] = data[col].apply(lambda x: x.split(' ')[0])
+        sentiment_matrix['Enhanced'] = data['Clean_Sentiment']  # Use Clean_Sentiment instead of Enhanced Sentiment
         
         # Calculate agreement matrix for sentiments only
         agreement_matrix = pd.DataFrame(index=['Positive', 'Neutral', 'Negative'], 
@@ -927,17 +942,18 @@ elif page == "Upload Data":
                     # Process comments to get all scores
                     processed_df = process_comments(comments_df)
                     
-                    # Display the processed dataframe with only the columns we know exist
-                    st.dataframe(
-                        processed_df[[
-                            'Comment',
-                            'VADER Score', 
-                            'MNB Score',
-                            'Enhanced Score',
-                            'Troll Score'
-                        ]],
-                        hide_index=False
-                    )
+                    # Display the processed dataframe with error handling
+                    try:
+                        display_columns = ['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']
+                        available_columns = [col for col in display_columns if col in processed_df.columns]
+                        
+                        st.dataframe(
+                            processed_df[available_columns],
+                            hide_index=False
+                        )
+                    except Exception as e:
+                        st.error(f"Error displaying data: {e}")
+                        st.write("Raw data:", processed_df)
                     
                     # Sentiment & Troll Detection Correction
                     st.subheader("Sentiment & Troll Detection Correction")
@@ -1364,17 +1380,18 @@ elif page == "Fetch TikTok Comments":
                         # Process comments to get all scores
                         processed_df = process_comments(comments_df)
                         
-                        # Display the processed dataframe with only the columns we know exist
-                        st.dataframe(
-                            processed_df[[
-                                'Comment',
-                                'VADER Score', 
-                                'MNB Score',
-                                'Enhanced Score',
-                                'Troll Score'
-                            ]],
-                            hide_index=False
-                        )
+                        # Display the processed dataframe with error handling
+                        try:
+                            display_columns = ['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']
+                            available_columns = [col for col in display_columns if col in processed_df.columns]
+                            
+                            st.dataframe(
+                                processed_df[available_columns],
+                                hide_index=False
+                            )
+                        except Exception as e:
+                            st.error(f"Error displaying data: {e}")
+                            st.write("Raw data:", processed_df)
                         
                         # Sentiment & Troll Detection Correction
                         st.subheader("Sentiment & Troll Detection Correction")
@@ -1929,3 +1946,15 @@ def update_sentiment_correction(df, idx, new_sentiment):
     except Exception as e:
         st.error(f"Error updating sentiment: {e}")
         return df
+
+def safe_float_convert(value, default=0.0):
+    """Safely convert a value to float"""
+    try:
+        if isinstance(value, str):
+            # Try to extract number from string like "Positive (0.75)"
+            match = re.search(r'\(([-+]?\d*\.?\d+)\)', value)
+            if match:
+                return float(match.group(1))
+        return float(value)
+    except:
+        return default
