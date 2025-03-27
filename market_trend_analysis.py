@@ -14,50 +14,6 @@ import seaborn as sns
 from scipy.stats import linregress
 from datetime import datetime
 
-def get_troll_risk_level(data):
-    """
-    Assess the troll risk level based on comment data.
-    
-    Args:
-        data (pandas.DataFrame): DataFrame with comment data that has troll scores
-        
-    Returns:
-        dict: Risk assessment information
-    """
-    # Check if troll score column exists
-    if 'Troll Score' not in data.columns:
-        return {
-            'risk_level': 'Unknown',
-            'score': 0.0,
-            'explanation': 'No troll score data available'
-        }
-    
-    # Calculate average troll score
-    avg_troll_score = data['Troll Score'].mean() if 'Troll Score' in data.columns else 0.0
-    
-    # Count high troll risk comments (score > 0.7)
-    high_risk_count = (data['Troll Score'] > 0.7).sum() if 'Troll Score' in data.columns else 0
-    high_risk_percentage = (high_risk_count / len(data)) * 100 if len(data) > 0 else 0
-    
-    # Determine risk level
-    if avg_troll_score > 0.6 or high_risk_percentage > 15:
-        risk_level = 'High'
-        explanation = 'High concentration of potential trolling activity detected.'
-    elif avg_troll_score > 0.3 or high_risk_percentage > 5:
-        risk_level = 'Medium'
-        explanation = 'Some potential trolling activity present.'
-    else:
-        risk_level = 'Low'
-        explanation = 'Minimal trolling activity detected.'
-    
-    return {
-        'risk_level': risk_level,
-        'score': avg_troll_score,
-        'high_risk_percentage': high_risk_percentage,
-        'high_risk_count': high_risk_count,
-        'explanation': explanation
-    }
-
 def detect_purchase_intent(text_series):
     """
     Enhanced analysis of text to detect purchase intent signals with improved sensitivity.
