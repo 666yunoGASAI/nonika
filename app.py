@@ -719,6 +719,25 @@ def get_risk_color(risk_level):
         'Critical': '#F44336'
     }.get(risk_level, '#808080')  # Default gray
 
+def get_troll_risk_level_from_score(percentage):
+    """
+    Convert a troll percentage score to a risk level string.
+    
+    Args:
+        percentage (float): Percentage of troll likelihood (0-100)
+        
+    Returns:
+        str: Risk level ('Low', 'Medium', 'High', or 'Critical')
+    """
+    if percentage < 30:
+        return "Low"
+    elif percentage < 60:
+        return "Medium"
+    elif percentage < 80:
+        return "High"
+    else:
+        return "Critical"
+
 # About page Tagalog information
 TAGALOG_ABOUT_TEXT = """
 ### Filipino/Tagalog Language Support
@@ -1873,22 +1892,3 @@ def calculate_market_metrics(comments_df):
     }
     
     return metrics
-
-def get_troll_risk_level_from_score(percentage):
-    """
-    Convert a troll percentage score to a risk level string.
-    
-    Args:
-        percentage (float): Percentage of troll likelihood (0-100)
-        
-    Returns:
-        str: Risk level ('Low', 'Medium', 'High', or 'Critical')
-    """
-    if percentage < 30:
-        return "Low"
-    elif percentage < 60:
-        return "Medium"
-    elif percentage < 80:
-        return "High"
-    else:
-        return "Critical"
