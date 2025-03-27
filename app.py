@@ -72,6 +72,52 @@ if st.button("Clear Cache and Reload"):
     st.cache_data.clear()
     st.experimental_rerun()
 
+# Move these function definitions to the top of the file, right after imports
+def analyze_sentiment_score(text):
+    """
+    Analyze sentiment and return a clean score between -1 and 1.
+    """
+    # Use VADER for base sentiment
+    vader_score = analyze_sentiment_vader(text)
+    
+    # Convert VADER text output to numeric score
+    if 'Positive' in vader_score:
+        base_score = 0.7
+    elif 'Negative' in vader_score:
+        base_score = -0.7
+    else:
+        base_score = 0.0
+        
+    # Adjust score based on emojis and other factors
+    processed = preprocess_text(text)
+    if processed['emojis']:
+        # Simple emoji adjustment
+        positive_emojis = len([e for e in processed['emojis'] if e in '😊😃😄😁👍❤️'])
+        negative_emojis = len([e for e in processed['emojis'] if e in '😢😭😠😡👎'])
+        emoji_adjustment = (positive_emojis - negative_emojis) * 0.1
+        base_score += emoji_adjustment
+    
+    # Ensure score is between -1 and 1
+    return max(min(base_score, 1.0), -1.0)
+
+def analyze_comment_with_trolling(text, language_mode=None):
+    """
+    Analyzes comment for both sentiment and troll detection.
+    Returns completely separate results.
+    """
+    # Get clean sentiment score (-1 to 1)
+    sentiment_score = analyze_sentiment_score(text)
+    
+    # Get troll analysis separately
+    troll_analysis = analyze_for_trolling(text)
+    
+    # Return completely separate results
+    return {
+        'sentiment_score': sentiment_score,  # Just the raw score
+        'is_troll': troll_analysis['is_troll'],
+        'troll_score': troll_analysis['troll_score']
+    }
+
 # Functions for language-aware sentiment analysis
 def add_language_settings():
     """Add language settings to the sidebar."""
@@ -114,24 +160,6 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
         return analyze_tagalog_sentiment_score(text)
     else:  # Multilingual mode
         return analyze_tagalog_sentiment_score(text)
-
-def analyze_comment_with_trolling(text, language_mode=None):
-    """
-    Analyzes comment for both sentiment and troll detection.
-    Returns completely separate results.
-    """
-    # Get clean sentiment score (-1 to 1)
-    sentiment_score = analyze_sentiment_score(text)
-    
-    # Get troll analysis separately
-    troll_analysis = analyze_for_trolling(text)
-    
-    # Return completely separate results
-    return {
-        'sentiment_score': sentiment_score,  # Just the raw score
-        'is_troll': troll_analysis['is_troll'],
-        'troll_score': troll_analysis['troll_score']
-    }
 
 def get_sentiment_breakdown_with_language(text, language_mode=None):
     """
@@ -1707,33 +1735,6 @@ elif page == "Sentiment Explorer":
         """)
 
 # First, move all these function definitions to the top, after imports
-def analyze_sentiment_score(text):
-    """
-    Analyze sentiment and return a clean score between -1 and 1.
-    """
-    # Use VADER for base sentiment
-    vader_score = analyze_sentiment_vader(text)
-    
-    # Convert VADER text output to numeric score
-    if 'Positive' in vader_score:
-        base_score = 0.7
-    elif 'Negative' in vader_score:
-        base_score = -0.7
-    else:
-        base_score = 0.0
-        
-    # Adjust score based on emojis and other factors
-    processed = preprocess_text(text)
-    if processed['emojis']:
-        # Simple emoji adjustment
-        positive_emojis = len([e for e in processed['emojis'] if e in '😊😃😄😁👍❤️'])
-        negative_emojis = len([e for e in processed['emojis'] if e in '😢😭😠😡👎'])
-        emoji_adjustment = (positive_emojis - negative_emojis) * 0.1
-        base_score += emoji_adjustment
-    
-    # Ensure score is between -1 and 1
-    return max(min(base_score, 1.0), -1.0)
-
 def get_sentiment_type(score):
     """
     Convert sentiment score to sentiment type.
