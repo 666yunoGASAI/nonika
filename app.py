@@ -39,6 +39,9 @@ from market_trend_analysis import (
     get_troll_risk_level
 )
 import random
+from plotly.subplots import make_subplots
+import logging
+from textblob import TextBlob  # For tagalog sentiment fallback
 
 troll_detector = TrollDetector()
 
@@ -65,6 +68,22 @@ if st.button("Clear Cache and Reload"):
     st.cache_data.clear()
     st.experimental_rerun()
 
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+def safe_analyze(func):
+    """Decorator for safe analysis with error handling"""
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.error(f"Error in {func.__name__}: {str(e)}")
+            return None
+    return wrapper
+
 # Functions for language-aware sentiment analysis
 def add_language_settings():
     """Add language settings to the sidebar."""
@@ -88,11 +107,17 @@ def add_language_settings():
     
     return language_mode
 
+@safe_analyze
 def analyze_sentiment_with_language_preference(text, language_mode=None):
-    """
-    Analyze sentiment with language mode preference.
-    Returns ONLY sentiment score, no troll data.
-    """
+    """Safely analyze sentiment with improved error handling"""
+    if not isinstance(text, str):
+        logging.warning(f"Invalid text type: {type(text)}")
+        return 0.0
+        
+    if not text.strip():
+        logging.warning("Empty text received")
+        return 0.0
+        
     if language_mode is None:
         language_mode = st.session_state.get('language_mode', "Auto-detect")
     
@@ -111,53 +136,44 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
 def analyze_comment_with_trolling(text, language_mode=None):
     """
     Analyzes comment for both sentiment and troll detection.
-    Returns completely separate results.
+    Returns completely separate results with clear structure.
     """
-    # Get clean sentiment score (-1 to 1)
-    sentiment_score = analyze_sentiment_score(text)
+    # Get sentiment score (-1 to 1) using language-aware analysis
+    sentiment_score = analyze_sentiment_with_language_preference(text, language_mode)
     
-    # Get troll analysis separately
+    # Get troll analysis with clear structure
     troll_analysis = analyze_for_trolling(text)
     
-    # Return completely separate results
     return {
-        'sentiment_score': sentiment_score,  # Just the raw score
-        'is_troll': troll_analysis['is_troll'],
-        'troll_score': troll_analysis['troll_score']
+        'sentiment': {
+            'score': sentiment_score,
+            'label': get_sentiment_label(sentiment_score),
+            'confidence': abs(sentiment_score)
+        },
+        'troll': {
+            'is_troll': troll_analysis['is_troll'],
+            'score': troll_analysis['troll_score'],
+            'risk_level': get_risk_level(troll_analysis['troll_score'])
+        }
     }
 
-def get_sentiment_breakdown_with_language(text, language_mode=None):
-    """
-    Get sentiment breakdown with language preference.
-    
-    Args:
-        text: Text to analyze
-        language_mode: Language mode preference
-        
-    Returns:
-        Sentiment breakdown dictionary
-    """
-    if language_mode is None:
-        language_mode = st.session_state.get('language_mode', "Auto-detect")
-    
-    if language_mode == "Auto-detect":
-        # Auto-detect language and apply appropriate breakdown
-        if is_tagalog(text):
-            return get_tagalog_sentiment_breakdown(text)
-        else:
-            return get_sentiment_breakdown(text)  # Your existing function
-    
-    elif language_mode == "English Only":
-        # Force English breakdown
-        return get_sentiment_breakdown(text)  # Your existing function
-    
-    elif language_mode == "Tagalog Only":
-        # Force Tagalog breakdown
-        return get_tagalog_sentiment_breakdown(text)
-    
-    else:  # Multilingual mode
-        # Always use the tagalog breakdown which includes multilingual capabilities
-        return get_tagalog_sentiment_breakdown(text)
+def get_sentiment_label(score):
+    """Convert sentiment score to clear label"""
+    if score > 0.05:
+        return 'Positive'
+    elif score < -0.05:
+        return 'Negative'
+    return 'Neutral'
+
+def get_risk_level(troll_score):
+    """Get standardized risk level from troll score"""
+    if troll_score > 0.8:
+        return 'Critical'
+    elif troll_score > 0.6:
+        return 'High'
+    elif troll_score > 0.3:
+        return 'Medium'
+    return 'Low'
 
 # Function to fetch comments from TikTok
 def fetch_tiktok_comments(video_link, max_comments=1000):
@@ -419,47 +435,55 @@ def preprocess_text(text):
 # Function to create a wordcloud
 def create_wordcloud(text_series):
     """Create a WordCloud from a series of texts."""
-    all_text = ' '.join(text_series.fillna(''))
-    
-    # Generate wordcloud
-    wordcloud = WordCloud(
-        width=800, 
-        height=400, 
-        background_color='white',
-        max_words=100,
-        contour_width=1
-    ).generate(all_text)
-    
-    # Plot
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis('off')
-    
-    return fig
+    try:
+        all_text = ' '.join(text_series.fillna(''))
+        
+        # Generate wordcloud
+        wordcloud = WordCloud(
+            width=800, 
+            height=400, 
+            background_color='white',
+            max_words=100,
+            contour_width=1
+        ).generate(all_text)
+        
+        # Plot
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis('off')
+        
+        return fig
+    except Exception as e:
+        logging.error(f"Error creating word cloud: {str(e)}")
+        return None
 
 # Function to analyze sentiment distribution
 def plot_sentiment_distribution(df):
     """Create separate visualizations for sentiment and troll detection"""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-    
-    # Plot sentiment distribution (using Enhanced Score)
-    sentiment_types = df['Enhanced Score'].apply(
-        lambda score: 'Positive' if score >= 0.05 else 'Negative' if score <= -0.05 else 'Neutral'
-    ).value_counts()
-    
-    sentiment_types.plot(kind='bar', ax=ax1, color=['green', 'gray', 'red'])
-    ax1.set_title('Sentiment Distribution')
-    ax1.set_ylabel('Count')
-    
-    # Plot troll distribution
-    troll_counts = df['Is_Troll'].value_counts()
-    colors = ['red' if x else 'green' for x in troll_counts.index]
-    troll_counts.plot(kind='bar', ax=ax2, color=colors)
-    ax2.set_title('Troll Detection Distribution')
-    ax2.set_ylabel('Count')
-    
-    plt.tight_layout()
-    return fig
+    try:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # Plot sentiment distribution (using Sentiment_Score)
+        sentiment_types = df['Sentiment_Score'].apply(
+            lambda score: 'Positive' if score >= 0.05 else 'Negative' if score <= -0.05 else 'Neutral'
+        ).value_counts()
+        
+        sentiment_types.plot(kind='bar', ax=ax1, color=['#2ecc71', '#95a5a6', '#e74c3c'])
+        ax1.set_title('Sentiment Distribution')
+        ax1.set_ylabel('Count')
+        
+        # Plot troll distribution
+        troll_counts = df['Is_Troll'].value_counts()
+        colors = ['#F44336' if x else '#4CAF50' for x in troll_counts.index]
+        troll_counts.plot(kind='bar', ax=ax2, color=colors)
+        ax2.set_title('Troll Detection Distribution')
+        ax2.set_ylabel('Count')
+        
+        plt.tight_layout()
+        return fig
+    except Exception as e:
+        logging.error(f"Error creating sentiment distribution plot: {str(e)}")
+        return None
 
 # Function to create a sentiment heatmap
 def create_sentiment_heatmap(df):
@@ -498,63 +522,71 @@ def create_sentiment_heatmap(df):
     return fig
 
 # Function to plot sentiment breakdown
-def plot_sentiment_factors(comment, breakdown=None):
+def plot_sentiment_factors(comment, breakdown):
     """Create a plot showing the factors contributing to sentiment score."""
-    if breakdown is None:
-        breakdown = get_sentiment_breakdown_with_language(comment)
-    
-    # Create data for the plot
-    if 'tagalog' in breakdown and breakdown['tagalog'] != 0:
-        # This is a Tagalog or mixed language comment
-        factors = ['VADER', 'ML Model', 'Emoji', 'Tagalog']
-        values = [breakdown['vader'], breakdown['multilingual'], breakdown['emoji'], breakdown['tagalog']]
-    else:
-        # This is an English comment
-        factors = ['VADER', 'ML Model', 'Emoji', 'Lexicon']
-        values = [breakdown['vader'], breakdown['multilingual'] if 'multilingual' in breakdown else breakdown['ml'], 
-                 breakdown['emoji'], breakdown['lexicon']]
-    
-    # Normalize values to -1 to 1 range
-    colors = ['green' if v > 0 else 'red' if v < 0 else 'gray' for v in values]
-    
-    # Create the bar chart
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=factors,
-        y=values,
-        marker_color=colors
-    ))
-    
-    fig.update_layout(
-        title=f"Sentiment Components for: '{comment[:50]}...'",
-        xaxis_title="Analysis Component",
-        yaxis_title="Sentiment Score (-1 to 1)",
-        yaxis=dict(range=[-1, 1])
-    )
-    
-    # Add a line for the final score
-    fig.add_shape(
-        type="line",
-        x0=-0.5,
-        y0=breakdown['final'],
-        x1=3.5,
-        y1=breakdown['final'],
-        line=dict(
-            color="blue",
-            width=2,
-            dash="dash",
+    try:
+        # Create data for the plot
+        if 'tagalog' in breakdown and breakdown['tagalog'] != 0:
+            # This is a Tagalog or mixed language comment
+            factors = ['VADER', 'ML Model', 'Emoji', 'Tagalog']
+            values = [
+                breakdown.get('vader', 0),
+                breakdown.get('multilingual', 0),
+                breakdown.get('emoji', 0),
+                breakdown.get('tagalog', 0)
+            ]
+        else:
+            # This is an English comment
+            factors = ['VADER', 'ML Model', 'Emoji', 'Lexicon']
+            values = [
+                breakdown.get('vader', 0),
+                breakdown.get('multilingual', breakdown.get('ml', 0)),
+                breakdown.get('emoji', 0),
+                breakdown.get('lexicon', 0)
+            ]
+        
+        # Create the bar chart
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=factors,
+            y=values,
+            marker_color=['green' if v > 0 else 'red' if v < 0 else 'gray' for v in values]
+        ))
+        
+        fig.update_layout(
+            title=f"Sentiment Components for: '{comment[:50]}...'",
+            xaxis_title="Analysis Component",
+            yaxis_title="Sentiment Score (-1 to 1)",
+            yaxis=dict(range=[-1, 1])
         )
-    )
-    
-    fig.add_annotation(
-        x=3.5,
-        y=breakdown['final'],
-        text=f"Final Score: {breakdown['final']:.2f}",
-        showarrow=False,
-        yshift=10
-    )
-    
-    return fig
+        
+        # Add a line for the final score
+        final_score = breakdown.get('final', 0)
+        fig.add_shape(
+            type="line",
+            x0=-0.5,
+            y0=final_score,
+            x1=3.5,
+            y1=final_score,
+            line=dict(
+                color="blue",
+                width=2,
+                dash="dash",
+            )
+        )
+        
+        fig.add_annotation(
+            x=3.5,
+            y=final_score,
+            text=f"Final Score: {final_score:.2f}",
+            showarrow=False,
+            yshift=10
+        )
+        
+        return fig
+    except Exception as e:
+        logging.error(f"Error creating sentiment factors plot: {str(e)}")
+        return None
 
 def plot_clean_sentiment_factors(comment, breakdown):
     """Create a plot showing ONLY sentiment factors (no troll data)."""
@@ -719,9 +751,9 @@ elif page == "Upload Data":
                     )
 
                     # Store results in COMPLETELY separate columns
-                    comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
-                    comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
-                    comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
+                    comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment']['score'])
+                    comments_df['Is_Troll'] = troll_results.apply(lambda x: x['troll']['is_troll'])
+                    comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll']['score'])
                 
                 # Create display DataFrame with separate columns
                 display_df = pd.DataFrame()
@@ -729,7 +761,7 @@ elif page == "Upload Data":
                 
                 # Clean sentiment display - NO TROLL INFO
                 display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
-                    lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
+                    lambda score: f"{get_sentiment_label(score)} ({score:.2f})"
                 )
                 
                 # Completely separate troll column
@@ -781,7 +813,7 @@ elif page == "Upload Data":
 
                     # Show current status - calculate clean sentiment
                     current_score = comments_df.loc[selected_comment_idx, 'Enhanced Score']
-                    current_sentiment = get_sentiment_type(current_score)
+                    current_sentiment = get_sentiment_label(current_score)
 
                     col1, col2 = st.columns(2)
 
@@ -1151,9 +1183,9 @@ elif page == "Fetch TikTok Comments":
                         )
 
                         # Store results in COMPLETELY separate columns
-                        comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment_score'])
-                        comments_df['Is_Troll'] = troll_results.apply(lambda x: x['is_troll'])
-                        comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll_score'])
+                        comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment']['score'])
+                        comments_df['Is_Troll'] = troll_results.apply(lambda x: x['troll']['is_troll'])
+                        comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll']['score'])
                     
                     # Create display DataFrame with separate columns
                     display_df = pd.DataFrame()
@@ -1161,7 +1193,7 @@ elif page == "Fetch TikTok Comments":
                     
                     # Clean sentiment display - NO TROLL INFO
                     display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
-                        lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
+                        lambda score: f"{get_sentiment_label(score)} ({score:.2f})"
                     )
                     
                     # Completely separate troll column
@@ -1213,7 +1245,7 @@ elif page == "Fetch TikTok Comments":
 
                         # Show current status - calculate clean sentiment
                         current_score = comments_df.loc[selected_comment_idx, 'Enhanced Score']
-                        current_sentiment = get_sentiment_type(current_score)
+                        current_sentiment = get_sentiment_label(current_score)
 
                         col1, col2 = st.columns(2)
 
@@ -1594,9 +1626,9 @@ elif page == "Sentiment Explorer":
             
             # Display sentiment information separately from troll info
             st.write("**Enhanced Sentiment Results:**")
-            sentiment_type = get_sentiment_type(analysis_result['sentiment_score'])
+            sentiment_type = get_sentiment_label(analysis_result['sentiment']['score'])
             st.metric("Sentiment Type", sentiment_type)
-            st.metric("Confidence Score", f"{analysis_result['sentiment_score']:.2f}")
+            st.metric("Confidence Score", f"{analysis_result['sentiment']['score']:.2f}")
             
             # Show breakdown
             st.write("**Sentiment Breakdown:**")
@@ -1613,13 +1645,11 @@ elif page == "Sentiment Explorer":
             st.write("**Troll Analysis Results:**")
             
             # Show troll status with colored badge
-            is_troll = analysis_result['is_troll']
-            troll_score = analysis_result['troll_score']
+            is_troll = analysis_result['troll']['is_troll']
+            troll_score = analysis_result['troll']['score']
             
             # Create color-coded risk level
-            risk_level = pd.cut([troll_score], 
-                bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
-                labels=['Low', 'Medium', 'High', 'Critical'])[0]
+            risk_level = get_risk_level(troll_score)
             
             risk_colors = {
                 'Low': '#4CAF50',      # Green
@@ -1675,13 +1705,13 @@ elif page == "Sentiment Explorer":
                 analyze_sentiment_vader(test_comment),
                 train_mnb_model([test_comment])[0],
                 combined_sentiment_analysis(test_comment),
-                f"{analysis_result['sentiment_score']:.2f}"
+                f"{analysis_result['sentiment']['score']:.2f}"
             ],
             'Troll Detection': [
                 'N/A',
                 'N/A',
                 'N/A',
-                f"{'🚨' if analysis_result['is_troll'] else ''} ({analysis_result['troll_score']:.2f})"
+                f"{'🚨' if is_troll else ''}"
             ]
         }
         
@@ -1750,51 +1780,58 @@ if __name__ == "__main__":
 
 # When processing comments
 def process_comments(comments_df):
-    """Process comments with completely separate sentiment and troll detection"""
-    # Create fresh DataFrame for display
-    display_df = pd.DataFrame()
-    display_df['Comment'] = comments_df['Comment']
-    
-    # Process each comment
-    results = []
-    for comment in comments_df['Comment']:
-        analysis = analyze_comment_with_trolling(comment)
-        results.append(analysis)
-    
-    # Add clean sentiment column
-    display_df['Sentiment'] = [
-        f"Positive ({r['sentiment_score']:.2f})" if r['sentiment_score'] > 0.05
-        else f"Negative ({r['sentiment_score']:.2f})" if r['sentiment_score'] < -0.05
-        else f"Neutral ({r['sentiment_score']:.2f})"
-        for r in results
-    ]
-    
-    # Add separate troll column
-    display_df['Troll Alert'] = ['🚨' if r['is_troll'] else '' for r in results]
-    
-    # Store raw scores for calculations
-    display_df['_sentiment_score'] = [r['sentiment_score'] for r in results]
-    display_df['_troll_score'] = [r['troll_score'] for r in results]
-    
-    return display_df
+    """Process comments with improved structure and error handling"""
+    try:
+        # Create fresh DataFrame with clear structure
+        processed_df = pd.DataFrame()
+        processed_df['Comment'] = comments_df['Comment']
+        
+        # Process text
+        processed_data = comments_df['Comment'].apply(preprocess_text)
+        processed_df['Processed_Text'] = processed_data.apply(lambda x: x['cleaned_text'])
+        processed_df['Emojis'] = processed_data.apply(lambda x: x['emojis'])
+        
+        # Analyze comments
+        analyses = comments_df['Comment'].apply(
+            lambda text: analyze_comment_with_trolling(text, st.session_state.get('language_mode'))
+        )
+        
+        # Add sentiment data
+        processed_df['Sentiment_Score'] = analyses.apply(lambda x: x['sentiment']['score'])
+        processed_df['Sentiment_Label'] = analyses.apply(lambda x: x['sentiment']['label'])
+        processed_df['Sentiment_Confidence'] = analyses.apply(lambda x: x['sentiment']['confidence'])
+        
+        # Add troll data separately
+        processed_df['Is_Troll'] = analyses.apply(lambda x: x['troll']['is_troll'])
+        processed_df['Troll_Score'] = analyses.apply(lambda x: x['troll']['score'])
+        processed_df['Risk_Level'] = analyses.apply(lambda x: x['troll']['risk_level'])
+        
+        return processed_df
+        
+    except Exception as e:
+        st.error(f"Error processing comments: {str(e)}")
+        return None
 
 def update_sentiment_correction(comments_df, selected_comment_idx, corrected_sentiment):
     """Update sentiment correction without mixing troll status"""
-    # Map sentiment labels to scores
-    sentiment_scores = {
-        'Positive': 0.8,
-        'Neutral': 0.0,
-        'Negative': -0.8
-    }
-    
-    # Update only the sentiment score
-    comments_df.loc[selected_comment_idx, '_sentiment_score'] = sentiment_scores[corrected_sentiment]
-    
-    # Update the display sentiment
-    score = sentiment_scores[corrected_sentiment]
-    comments_df.loc[selected_comment_idx, 'Sentiment'] = f"{corrected_sentiment} ({score:.2f})"
-    
-    return comments_df
+    try:
+        # Map sentiment labels to scores
+        sentiment_scores = {
+            'Positive': 0.8,
+            'Neutral': 0.0,
+            'Negative': -0.8
+        }
+        
+        # Update only the sentiment score
+        score = sentiment_scores[corrected_sentiment]
+        comments_df.loc[selected_comment_idx, 'Sentiment_Score'] = score
+        comments_df.loc[selected_comment_idx, 'Sentiment_Label'] = corrected_sentiment
+        comments_df.loc[selected_comment_idx, 'Sentiment'] = f"{corrected_sentiment} ({score:.2f})"
+        
+        return comments_df
+    except Exception as e:
+        logging.error(f"Error updating sentiment correction: {str(e)}")
+        return comments_df  # Return original DataFrame if update fails
 
 def calculate_market_metrics(comments_df):
     """Calculate market metrics using clean sentiment scores"""
@@ -1802,7 +1839,7 @@ def calculate_market_metrics(comments_df):
     valid_comments = comments_df[~comments_df['Is_Troll']]
     
     # Calculate sentiment from scores
-    valid_comments['Clean_Sentiment'] = valid_comments['Enhanced Score'].apply(
+    valid_comments['Clean_Sentiment'] = valid_comments['Sentiment_Score'].apply(
         lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
     )
     
@@ -1817,3 +1854,69 @@ def calculate_market_metrics(comments_df):
     }
     
     return metrics
+
+def create_sentiment_visualization(processed_df):
+    """Create improved sentiment visualization with clear separation"""
+    # Filter out troll comments for clean sentiment analysis
+    valid_df = processed_df[~processed_df['Is_Troll']]
+    
+    # Create figure with subplots
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=('Sentiment Distribution', 'Risk Level Distribution')
+    )
+    
+    # Add sentiment distribution
+    sentiment_counts = valid_df['Sentiment_Label'].value_counts()
+    fig.add_trace(
+        go.Bar(
+            x=sentiment_counts.index,
+            y=sentiment_counts.values,
+            name='Sentiment',
+            marker_color=['#2ecc71', '#95a5a6', '#e74c3c']
+        ),
+        row=1, col=1
+    )
+    
+    # Add risk level distribution
+    risk_counts = processed_df['Risk_Level'].value_counts()
+    fig.add_trace(
+        go.Bar(
+            x=risk_counts.index,
+            y=risk_counts.values,
+            name='Risk Level',
+            marker_color=['#4CAF50', '#FFC107', '#FF9800', '#F44336']
+        ),
+        row=1, col=2
+    )
+    
+    # Update layout
+    fig.update_layout(
+        height=400,
+        showlegend=False,
+        title_text="Comment Analysis Overview"
+    )
+    
+    return fig
+
+def analyze_english_sentiment_score(text):
+    """Analyze sentiment for English text"""
+    try:
+        # Use VADER for English sentiment
+        vader_score = analyze_sentiment_vader(text)
+        # Convert VADER compound score to our -1 to 1 scale
+        return float(vader_score)
+    except Exception as e:
+        logging.error(f"Error in English sentiment analysis: {str(e)}")
+        return 0.0
+
+def analyze_tagalog_sentiment_score(text):
+    """Analyze sentiment for Tagalog text"""
+    try:
+        # Get Tagalog sentiment breakdown
+        breakdown = get_tagalog_sentiment_breakdown(text)
+        # Return the final score
+        return float(breakdown.get('final', 0.0))
+    except Exception as e:
+        logging.error(f"Error in Tagalog sentiment analysis: {str(e)}")
+        return 0.0
