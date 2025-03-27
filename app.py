@@ -1072,7 +1072,7 @@ elif page == "Upload Data":
                         
                         st.metric("Troll Comments", f"{troll_count} / {total_count}")
                         st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                        st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                        st.metric("Risk Level", get_troll_risk_level(troll_percentage))  # Pass percentage directly
                     
                     with col2:
                         # Troll Risk Distribution
@@ -1231,7 +1231,7 @@ elif page == "Upload Data":
                         troll_percentage = (troll_count / len(comments_df)) * 100
                         
                         st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                        st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                        st.metric("Risk Level", get_troll_risk_level(troll_percentage))  # Pass percentage directly
                         
                         # Show troll risk distribution
                         risk_counts = comments_df['Troll Score'].apply(
@@ -1516,7 +1516,7 @@ elif page == "Fetch TikTok Comments":
                                 
                                 st.metric("Troll Comments", f"{troll_count} / {total_count}")
                                 st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                                st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                                st.metric("Risk Level", get_troll_risk_level(troll_percentage))  # Pass percentage directly
                             
                             with col2:
                                 # Troll Risk Distribution
@@ -1676,7 +1676,7 @@ elif page == "Fetch TikTok Comments":
                                     troll_percentage = (troll_count / len(comments_df)) * 100
                                     
                                     st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
-                                    st.metric("Risk Level", get_troll_risk_level(troll_percentage))
+                                    st.metric("Risk Level", get_troll_risk_level(troll_percentage))  # Pass percentage directly
                                     
                                     # Show troll risk distribution
                                     risk_counts = comments_df['Troll Score'].apply(
