@@ -108,13 +108,61 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
     else:  # Multilingual mode
         return analyze_tagalog_sentiment_score(text)
 
+def analyze_sentiment_score(text, language_mode=None):
+    """
+    Analyze sentiment and return just the raw score between -1 and 1.
+    """
+    if language_mode is None:
+        language_mode = st.session_state.get('language_mode', "Auto-detect")
+    
+    # Get sentiment analysis based on language mode
+    if language_mode == "Auto-detect":
+        if is_tagalog(text):
+            return analyze_tagalog_sentiment_score(text)
+        else:
+            return analyze_english_sentiment_score(text)
+    elif language_mode == "English Only":
+        return analyze_english_sentiment_score(text)
+    elif language_mode == "Tagalog Only":
+        return analyze_tagalog_sentiment_score(text)
+    else:  # Multilingual mode
+        return analyze_tagalog_sentiment_score(text)
+
+def analyze_english_sentiment_score(text):
+    """Analyze English text and return raw sentiment score."""
+    # Use enhanced sentiment analysis but extract just the score
+    sentiment = enhanced_sentiment_analysis(text)
+    # Convert the sentiment to a score between -1 and 1
+    if isinstance(sentiment, str):
+        if "Positive" in sentiment:
+            return 0.8
+        elif "Negative" in sentiment:
+            return -0.8
+        else:
+            return 0.0
+    return sentiment  # If it's already a numeric score
+
+def analyze_tagalog_sentiment_score(text):
+    """Analyze Tagalog text and return raw sentiment score."""
+    # Use Tagalog sentiment analysis but extract just the score
+    sentiment = tagalog_enhanced_sentiment_analysis(text)
+    # Convert the sentiment to a score between -1 and 1
+    if isinstance(sentiment, str):
+        if "Positive" in sentiment:
+            return 0.8
+        elif "Negative" in sentiment:
+            return -0.8
+        else:
+            return 0.0
+    return sentiment  # If it's already a numeric score
+
 def analyze_comment_with_trolling(text, language_mode=None):
     """
     Analyzes comment for both sentiment and troll detection.
     Returns completely separate results.
     """
     # Get clean sentiment score (-1 to 1)
-    sentiment_score = analyze_sentiment_score(text)
+    sentiment_score = analyze_sentiment_score(text, language_mode)
     
     # Get troll analysis separately
     troll_analysis = analyze_for_trolling(text)
