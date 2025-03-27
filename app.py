@@ -1195,6 +1195,10 @@ elif page == "Upload Data":
                             file_name="market_analysis_report.csv",
                             mime="text/csv"
                         )
+                
+                # Move these outside the nested blocks
+                if not comments_df.empty:
+                    st.success(f"Analysis complete! Processed {len(comments_df)} comments.")
                 else:
                     st.error("Failed to fetch comments. Please check the video link and try again.")
         else:
@@ -1651,6 +1655,10 @@ elif page == "Fetch TikTok Comments":
                                 file_name="market_analysis_report.csv",
                                 mime="text/csv"
                             )
+                
+                # Move these outside the nested blocks
+                if not comments_df.empty:
+                    st.success(f"Analysis complete! Processed {len(comments_df)} comments.")
                 else:
                     st.error("Failed to fetch comments. Please check the video link and try again.")
         else:
