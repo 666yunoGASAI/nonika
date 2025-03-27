@@ -30,6 +30,13 @@ import plotly.graph_objects as go
 import io
 import csv
 import chardet  # You may need to pip install chardet
+
+# ADD THESE LINES HERE
+import sys
+# Add current directory to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# END OF ADDED LINES
+
 from market_trend_analysis import (
     calculate_market_trend_score,
     plot_market_prediction,
