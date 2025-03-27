@@ -947,10 +947,14 @@ elif page == "Upload Data":
                     )
                     
                     if selected_comment:
-                        # Display ONLY sentiment breakdown
-                        breakdown = get_sentiment_breakdown_with_language(selected_comment, language_mode)
-                        breakdown_fig = plot_clean_sentiment_factors(selected_comment, breakdown)
-                        st.plotly_chart(breakdown_fig)
+                        # Get the selected comment text
+                        if 'selected_comment' in locals() and selected_comment:
+                            breakdown = get_sentiment_breakdown_with_language(selected_comment, language_mode)
+                            if breakdown:
+                                sentiment_fig = plot_sentiment_factors(selected_comment, breakdown)
+                                st.plotly_chart(sentiment_fig, use_container_width=True)
+                        else:
+                            st.warning("Please select a comment to analyze")
                         
                         # Show ONLY sentiment results
                         comment_idx = comments_df[comments_df['Comment'] == selected_comment].index[0]
@@ -1159,38 +1163,42 @@ elif page == "Upload Data":
                             }
                         )
                         st.plotly_chart(fig)
-                    
-                    # Market prediction visualization
-                    st.subheader("Market Prediction")
-                    market_fig = plot_market_prediction(comments_df)
-                    st.plotly_chart(market_fig)
-                    
-                    # Purchase volume prediction
-                    purchase_volume = predict_purchase_volume(comments_df)
-                    st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
-                    
-                    # Detailed market report
-                    st.subheader("Market Analysis Report")
-                    report = generate_market_trend_report(comments_df)
-                    st.markdown(report)
-                    
-                    # Add download button for report
-                    report_csv = pd.DataFrame({
-                        'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
-                        'Value': [
-                            market_score,
-                            len(valid_comments),
-                            troll_percentage,
-                            purchase_volume
-                        ]
-                    }).to_csv(index=False)
-                    
-                    st.download_button(
-                        label="Download Market Analysis Report",
-                        data=report_csv,
-                        file_name="market_analysis_report.csv",
-                        mime="text/csv"
-                    )
+                        
+                        # Market prediction visualization
+                        st.subheader("Market Prediction")
+                        market_fig = plot_market_prediction(comments_df)
+                        st.plotly_chart(market_fig)
+                        
+                        # Purchase volume prediction
+                        purchase_volume = predict_purchase_volume(comments_df)
+                        st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
+                        
+                        # Detailed market report
+                        st.subheader("Market Analysis Report")
+                        report = generate_market_trend_report(comments_df)
+                        st.markdown(report)
+                        
+                        # Add download button for report
+                        report_csv = pd.DataFrame({
+                            'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
+                            'Value': [
+                                market_score,
+                                len(valid_comments),
+                                troll_percentage,
+                                purchase_volume
+                            ]
+                        }).to_csv(index=False)
+                        
+                        st.download_button(
+                            label="Download Market Analysis Report",
+                            data=report_csv,
+                            file_name="market_analysis_report.csv",
+                            mime="text/csv"
+                        )
+                else:
+                    st.error("Failed to fetch comments. Please check the video link and try again.")
+        else:
+            st.warning("Please enter a TikTok video link.")
 
 # TikTok Comment Fetching
 elif page == "Fetch TikTok Comments":
@@ -1395,10 +1403,14 @@ elif page == "Fetch TikTok Comments":
                         )
                         
                         if selected_comment:
-                            # Display ONLY sentiment breakdown
-                            breakdown = get_sentiment_breakdown_with_language(selected_comment, language_mode)
-                            breakdown_fig = plot_clean_sentiment_factors(selected_comment, breakdown)
-                            st.plotly_chart(breakdown_fig)
+                            # Get the selected comment text
+                            if 'selected_comment' in locals() and selected_comment:
+                                breakdown = get_sentiment_breakdown_with_language(selected_comment, language_mode)
+                                if breakdown:
+                                    sentiment_fig = plot_sentiment_factors(selected_comment, breakdown)
+                                    st.plotly_chart(sentiment_fig, use_container_width=True)
+                            else:
+                                st.warning("Please select a comment to analyze")
                             
                             # Show ONLY sentiment results
                             comment_idx = comments_df[comments_df['Comment'] == selected_comment].index[0]
@@ -1678,21 +1690,26 @@ elif page == "Sentiment Explorer":
             st.subheader("Sentiment Analysis")
             
             # Get complete analysis
-            analysis_result = analyze_comment_with_trolling(test_comment, language_mode)
-            
-            # Display sentiment information separately from troll info
-            st.write("**Enhanced Sentiment Results:**")
-            sentiment_type = get_sentiment_label(analysis_result['sentiment']['score'])
-            st.metric("Sentiment Type", sentiment_type)
-            st.metric("Confidence Score", f"{analysis_result['sentiment']['score']:.2f}")
-            
-            # Show breakdown
-            st.write("**Sentiment Breakdown:**")
-            breakdown = get_sentiment_breakdown_with_language(test_comment, language_mode)
-            
-            # Create sentiment components visualization
-            sentiment_fig = plot_sentiment_factors(test_comment, breakdown)
-            st.plotly_chart(sentiment_fig, use_container_width=True)
+            selected_comment = get_selected_comment(comments_df, selected_comment_idx)
+            if selected_comment:
+                analysis_result = analyze_comment_with_trolling(selected_comment, language_mode)
+                
+                # Display sentiment information separately from troll info
+                st.write("**Enhanced Sentiment Results:**")
+                sentiment_type = get_sentiment_label(analysis_result['sentiment']['score'])
+                st.metric("Sentiment Type", sentiment_type)
+                st.metric("Confidence Score", f"{analysis_result['sentiment']['score']:.2f}")
+                
+                # Show breakdown
+                st.write("**Sentiment Breakdown:**")
+                breakdown = get_sentiment_breakdown_with_language(selected_comment, language_mode)
+                
+                # Create sentiment components visualization
+                if breakdown:
+                    sentiment_fig = plot_sentiment_factors(selected_comment, breakdown)
+                    st.plotly_chart(sentiment_fig, use_container_width=True)
+            else:
+                st.warning("Please select a comment to analyze")
         
         with col3:
             st.subheader("Troll Detection")
@@ -2038,3 +2055,13 @@ def get_sentiment_breakdown_with_language(text, language_mode=None):
             'final': 0.0,
             'multilingual': False
         }
+
+def get_selected_comment(comments_df, selected_comment_idx):
+    """Safely get the selected comment text from the DataFrame"""
+    try:
+        if selected_comment_idx is not None and not comments_df.empty:
+            return comments_df.loc[selected_comment_idx, 'Comment']
+        return None
+    except Exception as e:
+        logging.error(f"Error getting selected comment: {str(e)}")
+        return None
