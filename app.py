@@ -73,27 +73,29 @@ if st.button("Clear Cache and Reload"):
     st.experimental_rerun()
 
 # Add this function right after imports, before any other functions
-def get_sentiment_type(score):
+def get_sentiment_type(score, with_score=True):
     """
     Convert sentiment score to sentiment type.
     
     Args:
         score (float): Sentiment score between -1 and 1
+        with_score (bool): Whether to include the score in the output
         
     Returns:
-        str: 'Positive', 'Negative', or 'Neutral'
+        str: Sentiment type with optional score
     """
     try:
         score = float(score)
         if score > 0.05:
-            return "Positive"
+            sentiment = "Positive"
         elif score < -0.05:
-            return "Negative"
+            sentiment = "Negative"
         else:
-            return "Neutral"
+            sentiment = "Neutral"
+            
+        return f"{sentiment} ({score:.2f})" if with_score else sentiment
     except (ValueError, TypeError):
-        # Return Neutral if score can't be converted to float
-        return "Neutral"
+        return "Neutral (0.00)" if with_score else "Neutral"
 
 # Move these function definitions to the top of the file, right after imports
 def analyze_sentiment_score(text):
@@ -140,21 +142,32 @@ def process_comments(comments_df):
     
     for idx, comment in comments_df.iterrows():
         try:
+            # VADER Score
+            vader_score = analyze_sentiment_vader(comment['Comment'])
+            display_df.at[idx, 'VADER Score'] = f"{float(vader_score):.2f}" if isinstance(vader_score, (int, float)) else vader_score
+            
+            # MNB Score
+            try:
+                mnb_score = train_mnb_model([comment['Comment']])[0]
+                display_df.at[idx, 'MNB Score'] = f"{float(mnb_score):.2f}"
+            except:
+                display_df.at[idx, 'MNB Score'] = "0.00"
+            
             # Get complete analysis
             analysis = analyze_comment_with_trolling(comment['Comment'])
             
-            # Store sentiment score
+            # Store sentiment and troll scores
             display_df.at[idx, 'Enhanced Score'] = f"{float(analysis['sentiment_score']):.2f}"
-            
-            # Store troll detection results
-            display_df.at[idx, 'Is_Troll'] = bool(analysis['is_troll'])
             display_df.at[idx, 'Troll Score'] = f"{float(analysis['troll_score']):.2f}"
+            display_df.at[idx, 'Is_Troll'] = bool(analysis['is_troll'])
                 
         except Exception as e:
             # Set default values without showing error message
+            display_df.at[idx, 'VADER Score'] = "0.00"
+            display_df.at[idx, 'MNB Score'] = "0.00"
             display_df.at[idx, 'Enhanced Score'] = "0.00"
-            display_df.at[idx, 'Is_Troll'] = False
             display_df.at[idx, 'Troll Score'] = "0.00"
+            display_df.at[idx, 'Is_Troll'] = False
     
     return display_df
 
@@ -860,7 +873,7 @@ elif page == "Upload Data":
                 
                 # Clean sentiment display - NO TROLL INFO
                 display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
-                    lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
+                    lambda score: get_sentiment_type(score)
                 )
                 
                 # Completely separate troll column
@@ -892,9 +905,15 @@ elif page == "Upload Data":
                     # Process comments to get all scores
                     processed_df = process_comments(comments_df)
                     
-                    # Display the processed dataframe
+                    # Display the processed dataframe with only the columns we know exist
                     st.dataframe(
-                        processed_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                        processed_df[[
+                            'Comment',
+                            'VADER Score', 
+                            'MNB Score',
+                            'Enhanced Score',
+                            'Troll Score'
+                        ]],
                         hide_index=False
                     )
                     
@@ -917,7 +936,7 @@ elif page == "Upload Data":
 
                     with col1:
                         st.write("**Current Sentiment Status:**")
-                        st.write(f"Sentiment: {current_sentiment} ({current_score:.2f})")
+                        st.write(current_sentiment)
                         
                         # Let user choose new sentiment
                         corrected_sentiment = st.radio(
@@ -927,7 +946,7 @@ elif page == "Upload Data":
 
                     with col2:
                         st.write("**Current Troll Status:**")
-                        st.write(f"{'TROLL' if comments_df.loc[selected_comment_idx, 'Is_Troll'] else 'Not a Troll'} (Score: {comments_df.loc[selected_comment_idx, 'Troll Score']:.2f})")
+                        st.write(f"{'🚨' if comments_df.loc[selected_comment_idx, 'Is_Troll'] else 'Not a Troll'} (Score: {comments_df.loc[selected_comment_idx, 'Troll Score']:.2f})")
                         
                         # Separate troll detection correction
                         is_troll_corrected = st.radio(
@@ -1291,7 +1310,7 @@ elif page == "Fetch TikTok Comments":
                     
                     # Clean sentiment display - NO TROLL INFO
                     display_df['Sentiment'] = comments_df['Enhanced Score'].apply(
-                        lambda score: f"{'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'} ({score:.2f})"
+                        lambda score: get_sentiment_type(score)
                     )
                     
                     # Completely separate troll column
@@ -1323,9 +1342,15 @@ elif page == "Fetch TikTok Comments":
                         # Process comments to get all scores
                         processed_df = process_comments(comments_df)
                         
-                        # Display the processed dataframe
+                        # Display the processed dataframe with only the columns we know exist
                         st.dataframe(
-                            processed_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                            processed_df[[
+                                'Comment',
+                                'VADER Score', 
+                                'MNB Score',
+                                'Enhanced Score',
+                                'Troll Score'
+                            ]],
                             hide_index=False
                         )
                         
@@ -1348,7 +1373,7 @@ elif page == "Fetch TikTok Comments":
 
                         with col1:
                             st.write("**Current Sentiment Status:**")
-                            st.write(f"Sentiment: {current_sentiment} ({current_score:.2f})")
+                            st.write(current_sentiment)
                             
                             # Let user choose new sentiment
                             corrected_sentiment = st.radio(
@@ -1358,7 +1383,7 @@ elif page == "Fetch TikTok Comments":
 
                         with col2:
                             st.write("**Current Troll Status:**")
-                            st.write(f"{'TROLL' if comments_df.loc[selected_comment_idx, 'Is_Troll'] else 'Not a Troll'} (Score: {comments_df.loc[selected_comment_idx, 'Troll Score']:.2f})")
+                            st.write(f"{'🚨' if comments_df.loc[selected_comment_idx, 'Is_Troll'] else 'Not a Troll'} (Score: {comments_df.loc[selected_comment_idx, 'Troll Score']:.2f})")
                             
                             # Separate troll detection correction
                             is_troll_corrected = st.radio(
@@ -1829,3 +1854,22 @@ elif page == "Sentiment Explorer":
         
         The systems work independently to ensure accurate classification of both sentiment and troll behavior.
         """)
+
+def get_clean_sentiment_score(text, method='enhanced'):
+    """Get a clean sentiment score between -1 and 1"""
+    try:
+        if method == 'vader':
+            score = analyze_sentiment_vader(text)
+            if isinstance(score, (int, float)):
+                return float(score)
+            elif 'Positive' in str(score):
+                return 0.7
+            elif 'Negative' in str(score):
+                return -0.7
+            return 0.0
+        elif method == 'mnb':
+            return float(train_mnb_model([text])[0])
+        else:  # enhanced
+            return float(analyze_sentiment_score(text))
+    except:
+        return 0.0
