@@ -101,33 +101,38 @@ def analyze_sentiment_score(text):
     return max(min(base_score, 1.0), -1.0)
 
 def process_comments(comments_df):
-    """Process comments with separate sentiment scores and troll score"""
-    # Create fresh DataFrame for display
+    """Process comments with error handling and consistent output format"""
     display_df = pd.DataFrame()
-    display_df['Comment'] = comments_df['Comment']
     
-    # Process each comment and store individual scores
+    if comments_df is None or len(comments_df) == 0:
+        return display_df
+        
+    display_df['Comment'] = comments_df['Comment'].astype(str)
+    
     for idx, comment in comments_df.iterrows():
         try:
-            # Get VADER score - handle both numeric and string results
-            vader_result = analyze_sentiment_vader(comment['Comment'])
-            if isinstance(vader_result, float):
-                display_df.at[idx, 'VADER Score'] = f"{vader_result:.2f}"
-            else:
-                # If it's a string (like "Positive" or "Negative"), store as is
-                display_df.at[idx, 'VADER Score'] = vader_result
+            # VADER Score
+            vader_score = analyze_sentiment_vader(comment['Comment'])
+            display_df.at[idx, 'VADER Score'] = f"{float(vader_score):.2f}"
             
-            # Get MNB score
-            mnb_score = train_mnb_model([comment['Comment']])[0]
-            display_df.at[idx, 'MNB Score'] = f"{float(mnb_score):.2f}"
+            # MNB Score - with error handling
+            try:
+                mnb_score = train_mnb_model([comment['Comment']])[0]
+                display_df.at[idx, 'MNB Score'] = f"{float(mnb_score):.2f}"
+            except:
+                display_df.at[idx, 'MNB Score'] = "0.00"
             
-            # Get Enhanced score and Troll score
-            analysis = analyze_comment_with_trolling(comment['Comment'])
-            display_df.at[idx, 'Enhanced Score'] = f"{float(analysis['sentiment_score']):.2f}"
-            display_df.at[idx, 'Troll Score'] = f"{float(analysis['troll_score']):.2f}"
+            # Enhanced and Troll Score
+            try:
+                analysis = analyze_comment_with_trolling(comment['Comment'])
+                display_df.at[idx, 'Enhanced Score'] = f"{float(analysis['sentiment_score']):.2f}"
+                display_df.at[idx, 'Troll Score'] = f"{float(analysis['troll_score']):.2f}"
+            except:
+                display_df.at[idx, 'Enhanced Score'] = "0.00"
+                display_df.at[idx, 'Troll Score'] = "0.00"
+                
         except Exception as e:
-            st.error(f"Error processing comment {idx}: {str(e)}")
-            # Set default values if processing fails
+            # Set default values without showing error message
             display_df.at[idx, 'VADER Score'] = "0.00"
             display_df.at[idx, 'MNB Score'] = "0.00"
             display_df.at[idx, 'Enhanced Score'] = "0.00"
@@ -136,22 +141,29 @@ def process_comments(comments_df):
     return display_df
 
 def analyze_comment_with_trolling(text, language_mode=None):
-    """
-    Analyzes comment for both sentiment and troll detection.
-    Returns completely separate results.
-    """
-    # Get clean sentiment score (-1 to 1)
-    sentiment_score = analyze_sentiment_score(text)
-    
-    # Get troll analysis separately
-    troll_analysis = analyze_for_trolling(text)
-    
-    # Return completely separate results
-    return {
-        'sentiment_score': sentiment_score,  # Just the raw score
-        'is_troll': troll_analysis['is_troll'],
-        'troll_score': troll_analysis['troll_score']
-    }
+    """Analyzes comment with better error handling"""
+    try:
+        # Get sentiment score with error handling
+        sentiment_score = analyze_sentiment_score(str(text))
+        
+        # Get troll analysis with error handling
+        try:
+            troll_analysis = analyze_for_trolling(str(text))
+        except:
+            troll_analysis = {'is_troll': False, 'troll_score': 0.0}
+        
+        return {
+            'sentiment_score': float(sentiment_score),
+            'is_troll': bool(troll_analysis['is_troll']),
+            'troll_score': float(troll_analysis['troll_score'])
+        }
+    except:
+        # Return safe default values
+        return {
+            'sentiment_score': 0.0,
+            'is_troll': False,
+            'troll_score': 0.0
+        }
 
 # Functions for language-aware sentiment analysis
 def add_language_settings():
@@ -464,48 +476,68 @@ def read_file_with_multiple_formats(uploaded_file):
 
 # Text Preprocessing Enhancements
 def preprocess_text(text):
-    """Cleans and processes text for better sentiment analysis."""
-    if not isinstance(text, str):
-        text = str(text)
-    
-    text = text.lower()
-    text = re.sub(r'http\S+', '', text)  # Remove URLs
-    
-    # Extract and save emojis before removing them
-    emojis_found = ''.join(c for c in text if c in emoji.EMOJI_DATA)
-    
-    # Convert emojis to text for sentiment analysis
-    text_with_emoji_names = emoji.demojize(text, delimiters=(" ", " "))
-    
-    # Clean text for general analysis
-    clean_version = clean_text(text_with_emoji_names)
-    
-    return {
-        'cleaned_text': clean_version,
-        'emojis': emojis_found,
-        'demojized': text_with_emoji_names
-    }
+    """Clean and process text with error handling"""
+    try:
+        if not isinstance(text, str):
+            text = str(text)
+        
+        # Clean text
+        text = text.lower()
+        text = re.sub(r'http\S+', '', text)
+        
+        # Extract emojis safely
+        try:
+            emojis_found = ''.join(c for c in text if c in emoji.EMOJI_DATA)
+        except:
+            emojis_found = ''
+        
+        # Convert emojis to text safely
+        try:
+            text_with_emoji_names = emoji.demojize(text, delimiters=(" ", " "))
+        except:
+            text_with_emoji_names = text
+        
+        # Clean text for analysis
+        clean_version = re.sub(r'[^\w\s]', '', text_with_emoji_names)
+        
+        return {
+            'cleaned_text': clean_version,
+            'emojis': emojis_found,
+            'demojized': text_with_emoji_names
+        }
+    except Exception as e:
+        # Return safe default values
+        return {
+            'cleaned_text': str(text),
+            'emojis': '',
+            'demojized': str(text)
+        }
 
 # Function to create a wordcloud
 def create_wordcloud(text_series):
-    """Create a WordCloud from a series of texts."""
-    all_text = ' '.join(text_series.fillna(''))
-    
-    # Generate wordcloud
-    wordcloud = WordCloud(
-        width=800, 
-        height=400, 
-        background_color='white',
-        max_words=100,
-        contour_width=1
-    ).generate(all_text)
-    
-    # Plot
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis('off')
-    
-    return fig
+    """Create WordCloud with error handling"""
+    try:
+        all_text = ' '.join(text_series.fillna('').astype(str))
+        
+        wordcloud = WordCloud(
+            width=800, 
+            height=400,
+            background_color='white',
+            max_words=100,
+            contour_width=1
+        ).generate(all_text)
+        
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis('off')
+        return fig
+    except Exception as e:
+        # Create empty figure if wordcloud fails
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.text(0.5, 0.5, 'Could not generate word cloud', 
+                horizontalalignment='center', verticalalignment='center')
+        ax.axis('off')
+        return fig
 
 # Function to analyze sentiment distribution
 def plot_sentiment_distribution(df):
@@ -581,8 +613,12 @@ def plot_sentiment_factors(comment, breakdown=None):
     else:
         # This is an English comment
         factors = ['VADER', 'ML Model', 'Emoji', 'Lexicon']
-        values = [breakdown['vader'], breakdown['multilingual'] if 'multilingual' in breakdown else breakdown['ml'], 
-                 breakdown['emoji'], breakdown['lexicon']]
+        values = [
+            breakdown['vader'],
+            breakdown['multilingual'] if 'multilingual' in breakdown else breakdown['ml'],
+            breakdown['emoji'],
+            breakdown['lexicon']
+        ]
     
     # Normalize values to -1 to 1 range
     colors = ['green' if v > 0 else 'red' if v < 0 else 'gray' for v in values]
@@ -1998,82 +2034,3 @@ elif page == "Sentiment Explorer":
         
         The systems work independently to ensure accurate classification of both sentiment and troll behavior.
         """)
-
-# First, move all these function definitions to the top, after imports
-def get_sentiment_type(score):
-    """
-    Convert sentiment score to sentiment type.
-    """
-    if score > 0.05:
-        return "Positive"
-    elif score < -0.05:
-        return "Negative"
-    else:
-        return "Neutral"
-
-def analyze_english_sentiment_score(text):
-    """
-    Analyze English text sentiment and return score between -1 and 1.
-    """
-    return analyze_sentiment_score(text)
-
-def analyze_tagalog_sentiment_score(text):
-    """
-    Analyze Tagalog text sentiment and return score between -1 and 1.
-    """
-    # For now, use same analysis as English but could be enhanced for Tagalog
-    return analyze_sentiment_score(text)
-
-def tagalog_enhanced_sentiment_analysis(text):
-    """
-    A simple sentiment analysis function for Tagalog text.
-    Returns a dictionary with sentiment score and sentiment label.
-    """
-    # Get base sentiment score
-    score = analyze_tagalog_sentiment_score(text)
-    
-    # Convert to sentiment label
-    sentiment = get_sentiment_type(score)
-    
-    # Return formatted string
-    return f"{sentiment} ({score:.2f})"
-
-def update_sentiment_correction(comments_df, selected_comment_idx, corrected_sentiment):
-    """Update sentiment correction without mixing troll status"""
-    # Map sentiment labels to scores
-    sentiment_scores = {
-        'Positive': 0.8,
-        'Neutral': 0.0,
-        'Negative': -0.8
-    }
-    
-    # Update only the sentiment score
-    comments_df.loc[selected_comment_idx, '_sentiment_score'] = sentiment_scores[corrected_sentiment]
-    
-    # Update the display sentiment
-    score = sentiment_scores[corrected_sentiment]
-    comments_df.loc[selected_comment_idx, 'Sentiment'] = f"{corrected_sentiment} ({score:.2f})"
-    
-    return comments_df
-
-def calculate_market_metrics(comments_df):
-    """Calculate market metrics using clean sentiment scores"""
-    # Filter out troll comments
-    valid_comments = comments_df[~comments_df['Is_Troll']]
-    
-    # Calculate sentiment from scores
-    valid_comments['Clean_Sentiment'] = valid_comments['Enhanced Score'].apply(
-        lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
-    )
-    
-    # Calculate metrics
-    sentiment_counts = valid_comments['Clean_Sentiment'].value_counts()
-    total_valid = len(valid_comments)
-    
-    metrics = {
-        'positive_ratio': sentiment_counts.get('Positive', 0) / total_valid,
-        'negative_ratio': sentiment_counts.get('Negative', 0) / total_valid,
-        'troll_ratio': len(comments_df[comments_df['Is_Troll']]) / len(comments_df)
-    }
-    
-    return metrics
