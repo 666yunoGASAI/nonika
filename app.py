@@ -792,16 +792,10 @@ elif page == "Upload Data":
                 with tab1:
                     # Display data
                     st.subheader("Processed Comments")
-                    # Show comment, clean sentiment, and separate troll status
-                    st.dataframe(display_df[['Comment', 'Sentiment', 'Troll Status']])
-                    
-                    # For detailed analysis, show:
-                    st.dataframe(comments_df[[
-                        'Comment', 
-                        'Enhanced Score',  # Raw sentiment score
-                        'Is_Troll',       # Boolean troll flag
-                        'Troll Score'     # Numerical troll score
-                    ]])
+                    st.dataframe(
+                        display_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                        hide_index=False
+                    )
                     
                     # Sentiment & Troll Detection Correction
                     st.subheader("Sentiment & Troll Detection Correction")
@@ -1116,38 +1110,38 @@ elif page == "Upload Data":
                             }
                         )
                         st.plotly_chart(fig)
-                    
-                    # Market prediction visualization
-                    st.subheader("Market Prediction")
-                    market_fig = plot_market_prediction(comments_df)
-                    st.plotly_chart(market_fig)
-                    
-                    # Purchase volume prediction
-                    purchase_volume = predict_purchase_volume(comments_df)
-                    st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
-                    
-                    # Detailed market report
-                    st.subheader("Market Analysis Report")
-                    report = generate_market_trend_report(comments_df)
-                    st.markdown(report)
-                    
-                    # Add download button for report
-                    report_csv = pd.DataFrame({
-                        'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
-                        'Value': [
-                            market_score,
-                            len(valid_comments),
-                            troll_percentage,
-                            purchase_volume
-                        ]
-                    }).to_csv(index=False)
-                    
-                    st.download_button(
-                        label="Download Market Analysis Report",
-                        data=report_csv,
-                        file_name="market_analysis_report.csv",
-                        mime="text/csv"
-                    )
+                        
+                        # Market prediction visualization
+                        st.subheader("Market Prediction")
+                        market_fig = plot_market_prediction(comments_df)
+                        st.plotly_chart(market_fig)
+                        
+                        # Purchase volume prediction
+                        purchase_volume = predict_purchase_volume(comments_df)
+                        st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
+                        
+                        # Detailed market report
+                        st.subheader("Market Analysis Report")
+                        report = generate_market_trend_report(comments_df)
+                        st.markdown(report)
+                        
+                        # Add download button for report
+                        report_csv = pd.DataFrame({
+                            'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
+                            'Value': [
+                                market_score,
+                                len(valid_comments),
+                                troll_percentage,
+                                purchase_volume
+                            ]
+                        }).to_csv(index=False)
+                        
+                        st.download_button(
+                            label="Download Market Analysis Report",
+                            data=report_csv,
+                            file_name="market_analysis_report.csv",
+                            mime="text/csv"
+                        )
 
 # TikTok Comment Fetching
 elif page == "Fetch TikTok Comments":
@@ -1224,16 +1218,10 @@ elif page == "Fetch TikTok Comments":
                     with tab1:
                         # Display data
                         st.subheader("Processed Comments")
-                        # Show comment, clean sentiment, and separate troll status
-                        st.dataframe(display_df[['Comment', 'Sentiment', 'Troll Status']])
-                        
-                        # For detailed analysis, show:
-                        st.dataframe(comments_df[[
-                            'Comment', 
-                            'Enhanced Score',  # Raw sentiment score
-                            'Is_Troll',       # Boolean troll flag
-                            'Troll Score'     # Numerical troll score
-                        ]])
+                        st.dataframe(
+                            display_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                            hide_index=False
+                        )
                         
                         # Sentiment & Troll Detection Correction
                         st.subheader("Sentiment & Troll Detection Correction")
@@ -1454,16 +1442,10 @@ elif page == "Fetch TikTok Comments":
                         with tab1:
                             # Display data
                             st.subheader("Processed Comments")
-                            # Show comment, clean sentiment, and separate troll status
-                            st.dataframe(display_df[['Comment', 'Sentiment', 'Troll Status']])
-                            
-                            # For detailed analysis, show:
-                            st.dataframe(comments_df[[
-                                'Comment', 
-                                'Enhanced Score',  # Raw sentiment score
-                                'Is_Troll',       # Boolean troll flag
-                                'Troll Score'     # Numerical troll score
-                            ]])
+                            st.dataframe(
+                                display_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                                hide_index=False
+                            )
                             
                             # Sentiment & Troll Detection Correction
                             st.subheader("Sentiment & Troll Detection Correction")
