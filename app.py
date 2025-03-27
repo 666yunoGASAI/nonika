@@ -210,6 +210,23 @@ def analyze_comment_with_trolling(text, language_mode=None):
         'troll_score': troll_analysis['troll_score']
     }
 
+def get_sentiment_type(score):
+    """
+    Convert a sentiment score to a sentiment type string.
+    
+    Args:
+        score (float): Sentiment score between -1 and 1
+        
+    Returns:
+        str: 'Positive', 'Negative', or 'Neutral'
+    """
+    if score > 0.05:
+        return "Positive"
+    elif score < -0.05:
+        return "Negative"
+    else:
+        return "Neutral"
+
 def get_sentiment_breakdown_with_language(text, language_mode=None):
     """
     Get sentiment breakdown with language preference.
