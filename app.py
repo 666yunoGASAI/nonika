@@ -110,60 +110,96 @@ def add_language_settings():
 @safe_analyze
 def analyze_sentiment_with_language_preference(text, language_mode=None):
     """Safely analyze sentiment with improved error handling"""
-    if not isinstance(text, str):
-        logging.warning(f"Invalid text type: {type(text)}")
-        return 0.0
+    try:
+        if not isinstance(text, str):
+            logging.warning(f"Invalid text type: {type(text)}")
+            return 0.0
+            
+        if not text.strip():
+            logging.warning("Empty text received")
+            return 0.0
+            
+        if language_mode is None:
+            language_mode = st.session_state.get('language_mode', "Auto-detect")
         
-    if not text.strip():
-        logging.warning("Empty text received")
-        return 0.0
+        score = 0.0  # Default score
         
-    if language_mode is None:
-        language_mode = st.session_state.get('language_mode', "Auto-detect")
-    
-    if language_mode == "Auto-detect":
-        if is_tagalog(text):
-            return analyze_tagalog_sentiment_score(text)
-        else:
-            return analyze_english_sentiment_score(text)
-    elif language_mode == "English Only":
-        return analyze_english_sentiment_score(text)
-    elif language_mode == "Tagalog Only":
-        return analyze_tagalog_sentiment_score(text)
-    else:  # Multilingual mode
-        return analyze_tagalog_sentiment_score(text)
+        if language_mode == "Auto-detect":
+            if is_tagalog(text):
+                score = analyze_tagalog_sentiment_score(text)
+            else:
+                score = analyze_english_sentiment_score(text)
+        elif language_mode == "English Only":
+            score = analyze_english_sentiment_score(text)
+        elif language_mode == "Tagalog Only":
+            score = analyze_tagalog_sentiment_score(text)
+        else:  # Multilingual mode
+            score = analyze_tagalog_sentiment_score(text)
+            
+        # Ensure we return a valid float
+        return float(score) if score is not None else 0.0
+        
+    except Exception as e:
+        logging.error(f"Error in sentiment analysis: {e}")
+        return 0.0
 
 def analyze_comment_with_trolling(text, language_mode=None):
     """
     Analyzes comment for both sentiment and troll detection.
     Returns completely separate results with clear structure.
     """
-    # Get sentiment score (-1 to 1) using language-aware analysis
-    sentiment_score = analyze_sentiment_with_language_preference(text, language_mode)
-    
-    # Get troll analysis with clear structure
-    troll_analysis = analyze_for_trolling(text)
-    
-    return {
-        'sentiment': {
-            'score': sentiment_score,
-            'label': get_sentiment_label(sentiment_score),
-            'confidence': abs(sentiment_score)
-        },
-        'troll': {
-            'is_troll': troll_analysis['is_troll'],
-            'score': troll_analysis['troll_score'],
-            'risk_level': get_risk_level(troll_analysis['troll_score'])
+    try:
+        # Get sentiment score (-1 to 1) using language-aware analysis
+        sentiment_score = analyze_sentiment_with_language_preference(text, language_mode)
+        
+        # Ensure we have a valid float
+        sentiment_score = float(sentiment_score) if sentiment_score is not None else 0.0
+        
+        # Get troll analysis with clear structure
+        troll_analysis = analyze_for_trolling(text)
+        
+        return {
+            'sentiment': {
+                'score': sentiment_score,
+                'label': get_sentiment_label(sentiment_score),
+                'confidence': abs(sentiment_score)
+            },
+            'troll': {
+                'is_troll': bool(troll_analysis.get('is_troll', False)),
+                'score': float(troll_analysis.get('troll_score', 0.0)),
+                'risk_level': get_risk_level(float(troll_analysis.get('troll_score', 0.0)))
+            }
         }
-    }
+    except Exception as e:
+        logging.error(f"Error in analyze_comment_with_trolling: {e}")
+        # Return safe default values
+        return {
+            'sentiment': {
+                'score': 0.0,
+                'label': 'Neutral',
+                'confidence': 0.0
+            },
+            'troll': {
+                'is_troll': False,
+                'score': 0.0,
+                'risk_level': 'Low'
+            }
+        }
 
 def get_sentiment_label(score):
-    """Convert sentiment score to clear label"""
-    if score > 0.05:
-        return 'Positive'
-    elif score < -0.05:
-        return 'Negative'
-    return 'Neutral'
+    """Convert sentiment score to clear label with proper type checking"""
+    try:
+        # Convert score to float if it isn't already
+        score = float(score) if score is not None else 0.0
+        
+        if score > 0.05:
+            return 'Positive'
+        elif score < -0.05:
+            return 'Negative'
+        return 'Neutral'
+    except (TypeError, ValueError) as e:
+        logging.error(f"Error converting sentiment score: {e}")
+        return 'Neutral'  # Default to neutral on error
 
 def get_risk_level(troll_score):
     """Get standardized risk level from troll score"""
@@ -746,14 +782,24 @@ elif page == "Upload Data":
                     comments_df['Hashtags'] = comments_df['Comment'].apply(extract_hashtags)
                     
                     # Apply sentiment analysis and troll detection SEPARATELY
-                    troll_results = comments_df['Comment'].apply(
-                        lambda text: analyze_comment_with_trolling(text, language_mode)
-                    )
+                    try:
+                        troll_results = comments_df['Comment'].apply(
+                            lambda text: analyze_comment_with_trolling(text, language_mode)
+                        )
 
-                    # Store results in COMPLETELY separate columns
-                    comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment']['score'])
-                    comments_df['Is_Troll'] = troll_results.apply(lambda x: x['troll']['is_troll'])
-                    comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll']['score'])
+                        # Store results in COMPLETELY separate columns with error handling
+                        comments_df['Enhanced Score'] = troll_results.apply(
+                            lambda x: float(x['sentiment']['score']) if x and 'sentiment' in x else 0.0
+                        )
+                        comments_df['Is_Troll'] = troll_results.apply(
+                            lambda x: bool(x['troll']['is_troll']) if x and 'troll' in x else False
+                        )
+                        comments_df['Troll Score'] = troll_results.apply(
+                            lambda x: float(x['troll']['score']) if x and 'troll' in x else 0.0
+                        )
+                    except Exception as e:
+                        st.error(f"Error processing comments: {str(e)}")
+                        logging.error(f"Error in comment processing: {str(e)}")
                 
                 # Create display DataFrame with separate columns
                 display_df = pd.DataFrame()
@@ -1178,14 +1224,24 @@ elif page == "Fetch TikTok Comments":
                         comments_df['Hashtags'] = comments_df['Comment'].apply(extract_hashtags)
                         
                         # Apply sentiment analysis and troll detection SEPARATELY
-                        troll_results = comments_df['Comment'].apply(
-                            lambda text: analyze_comment_with_trolling(text, language_mode)
-                        )
+                        try:
+                            troll_results = comments_df['Comment'].apply(
+                                lambda text: analyze_comment_with_trolling(text, language_mode)
+                            )
 
-                        # Store results in COMPLETELY separate columns
-                        comments_df['Enhanced Score'] = troll_results.apply(lambda x: x['sentiment']['score'])
-                        comments_df['Is_Troll'] = troll_results.apply(lambda x: x['troll']['is_troll'])
-                        comments_df['Troll Score'] = troll_results.apply(lambda x: x['troll']['score'])
+                            # Store results in COMPLETELY separate columns with error handling
+                            comments_df['Enhanced Score'] = troll_results.apply(
+                                lambda x: float(x['sentiment']['score']) if x and 'sentiment' in x else 0.0
+                            )
+                            comments_df['Is_Troll'] = troll_results.apply(
+                                lambda x: bool(x['troll']['is_troll']) if x and 'troll' in x else False
+                            )
+                            comments_df['Troll Score'] = troll_results.apply(
+                                lambda x: float(x['troll']['score']) if x and 'troll' in x else 0.0
+                            )
+                        except Exception as e:
+                            st.error(f"Error processing comments: {str(e)}")
+                            logging.error(f"Error in comment processing: {str(e)}")
                     
                     # Create display DataFrame with separate columns
                     display_df = pd.DataFrame()
