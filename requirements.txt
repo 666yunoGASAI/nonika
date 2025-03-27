@@ -13,3 +13,4 @@ apify-client
 joblib
 pytest
 langdetect
+textblob
