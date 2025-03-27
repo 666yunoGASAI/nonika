@@ -1976,3 +1976,65 @@ def analyze_tagalog_sentiment_score(text):
     except Exception as e:
         logging.error(f"Error in Tagalog sentiment analysis: {str(e)}")
         return 0.0
+
+def get_sentiment_breakdown_with_language(text, language_mode=None):
+    """Get sentiment breakdown with language preference.
+    
+    Args:
+        text: Text to analyze
+        language_mode: Language mode preference
+        
+    Returns:
+        Sentiment breakdown dictionary
+    """
+    try:
+        if language_mode is None:
+            language_mode = st.session_state.get('language_mode', "Auto-detect")
+        
+        if language_mode == "Auto-detect":
+            # Auto-detect language and apply appropriate breakdown
+            if is_tagalog(text):
+                return get_tagalog_sentiment_breakdown(text)
+            else:
+                return get_sentiment_breakdown(text)
+        
+        elif language_mode == "English Only":
+            # Force English breakdown
+            return get_sentiment_breakdown(text)
+        
+        elif language_mode == "Tagalog Only":
+            # Force Tagalog breakdown
+            return get_tagalog_sentiment_breakdown(text)
+        
+        else:  # Multilingual mode
+            # Get both breakdowns and combine them
+            eng_breakdown = get_sentiment_breakdown(text)
+            tag_breakdown = get_tagalog_sentiment_breakdown(text)
+            
+            # Combine scores with weights
+            combined = {
+                'vader': eng_breakdown.get('vader', 0) * 0.5,
+                'ml': eng_breakdown.get('ml', 0) * 0.5,
+                'emoji': (eng_breakdown.get('emoji', 0) + tag_breakdown.get('emoji', 0)) / 2,
+                'lexicon': eng_breakdown.get('lexicon', 0) * 0.5,
+                'tagalog': tag_breakdown.get('final', 0) * 0.5,
+                'multilingual': True
+            }
+            
+            # Calculate final score
+            scores = [v for k, v in combined.items() if k not in ['multilingual']]
+            combined['final'] = sum(scores) / len(scores) if scores else 0.0
+            
+            return combined
+            
+    except Exception as e:
+        logging.error(f"Error in sentiment breakdown: {str(e)}")
+        # Return safe default values
+        return {
+            'vader': 0.0,
+            'ml': 0.0,
+            'emoji': 0.0,
+            'lexicon': 0.0,
+            'final': 0.0,
+            'multilingual': False
+        }
