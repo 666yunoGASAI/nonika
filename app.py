@@ -30,6 +30,7 @@ import plotly.graph_objects as go
 import io
 import csv
 import chardet  # You may need to pip install chardet
+import numpy as np
 
 # ADD THESE LINES HERE
 import sys
@@ -604,38 +605,59 @@ def plot_sentiment_distribution(df):
 # Function to create a sentiment heatmap
 def create_sentiment_heatmap(df):
     """Create separate heatmaps for sentiment and troll detection."""
-    # Sentiment comparison heatmap
-    sentiment_methods = ['VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment']
-    sentiment_matrix = pd.DataFrame()
-    
-    # Get clean sentiment for Enhanced
-    df['Clean_Sentiment'] = df['Enhanced Score'].apply(
-        lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
-    )
-    
-    for col in sentiment_methods:
-        sentiment_matrix[col] = df[col].apply(lambda x: x.split(' ')[0])
-    sentiment_matrix['Enhanced'] = df['Clean_Sentiment']  # Use Clean_Sentiment instead of Enhanced Sentiment
-    
-    # Calculate agreement matrix for sentiments only
-    agreement_matrix = pd.DataFrame(index=['Positive', 'Neutral', 'Negative'], 
-                                  columns=['Positive', 'Neutral', 'Negative'])
-    agreement_matrix = agreement_matrix.fillna(0)
-    
-    # Count agreements using Clean_Sentiment
-    for idx, row in sentiment_matrix.iterrows():
-        enhanced = row['Enhanced']  # This is now from Clean_Sentiment
-        for method in sentiment_methods:
-            agreement_matrix.at[enhanced, row[method]] += 1
-    
-    # Create the heatmap
-    fig = px.imshow(agreement_matrix, 
-                    labels=dict(x="Other Methods", y="Enhanced Sentiment", color="Agreement Count"),
-                    color_continuous_scale='Viridis')
-    
-    fig.update_layout(title="Sentiment Analysis Method Agreement")
-    
-    return fig
+    try:
+        # Add these columns if they don't exist
+        if 'VADER Sentiment' not in df.columns:
+            df['VADER Sentiment'] = df['VADER Score'].apply(lambda x: 'Positive' if float(x) > 0.05 
+                                                          else 'Negative' if float(x) < -0.05 
+                                                          else 'Neutral')
+        
+        if 'MNB Sentiment' not in df.columns:
+            df['MNB Sentiment'] = df['MNB Score'].apply(lambda x: 'Positive' if float(x) > 0.05 
+                                                       else 'Negative' if float(x) < -0.05 
+                                                       else 'Neutral')
+        
+        if 'Combined Sentiment' not in df.columns:
+            df['Combined Sentiment'] = df.apply(lambda row: 
+                'Positive' if (float(row['VADER Score']) + float(row['MNB Score']))/2 > 0.05
+                else 'Negative' if (float(row['VADER Score']) + float(row['MNB Score']))/2 < -0.05
+                else 'Neutral', axis=1)
+        
+        # Sentiment comparison heatmap
+        sentiment_methods = ['VADER Sentiment', 'MNB Sentiment', 'Combined Sentiment']
+        sentiment_matrix = pd.DataFrame()
+        
+        # Get clean sentiment for Enhanced
+        df['Clean_Sentiment'] = df['Enhanced Score'].apply(
+            lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
+        )
+        
+        for col in sentiment_methods:
+            sentiment_matrix[col] = df[col].apply(lambda x: x.split(' ')[0])
+        sentiment_matrix['Enhanced'] = df['Clean_Sentiment']  # Use Clean_Sentiment instead of Enhanced Sentiment
+        
+        # Calculate agreement matrix for sentiments only
+        agreement_matrix = pd.DataFrame(index=['Positive', 'Neutral', 'Negative'], 
+                                      columns=['Positive', 'Neutral', 'Negative'])
+        agreement_matrix = agreement_matrix.fillna(0)
+        
+        # Count agreements using Clean_Sentiment
+        for idx, row in sentiment_matrix.iterrows():
+            enhanced = row['Enhanced']  # This is now from Clean_Sentiment
+            for method in sentiment_methods:
+                agreement_matrix.at[enhanced, row[method]] += 1
+        
+        # Create the heatmap
+        fig = px.imshow(agreement_matrix, 
+                        labels=dict(x="Other Methods", y="Enhanced Sentiment", color="Agreement Count"),
+                        color_continuous_scale='Viridis')
+        
+        fig.update_layout(title="Sentiment Analysis Method Agreement")
+        
+        return fig
+    except Exception as e:
+        st.error(f"Error creating heatmap: {e}")
+        return go.Figure()  # Return empty figure on error
 
 # Function to plot sentiment breakdown
 def plot_sentiment_factors(comment, breakdown=None):
@@ -1873,3 +1895,37 @@ def get_clean_sentiment_score(text, method='enhanced'):
             return float(analyze_sentiment_score(text))
     except:
         return 0.0
+
+def analyze_english_sentiment_score(text):
+    """Analyze sentiment for English text"""
+    try:
+        return analyze_sentiment_score(text)
+    except:
+        return 0.0
+
+def analyze_tagalog_sentiment_score(text):
+    """Analyze sentiment for Tagalog text"""
+    try:
+        # Use your Tagalog sentiment analysis logic here
+        # For now, fallback to English analysis
+        return analyze_sentiment_score(text)
+    except:
+        return 0.0
+
+def update_sentiment_correction(df, idx, new_sentiment):
+    """Update sentiment correction in the DataFrame"""
+    try:
+        # Convert sentiment label to score
+        if new_sentiment == "Positive":
+            score = 0.7
+        elif new_sentiment == "Negative":
+            score = -0.7
+        else:
+            score = 0.0
+            
+        # Update the score
+        df.at[idx, 'Enhanced Score'] = score
+        return df
+    except Exception as e:
+        st.error(f"Error updating sentiment: {e}")
+        return df
