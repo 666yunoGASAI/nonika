@@ -108,6 +108,67 @@ def analyze_sentiment_with_language_preference(text, language_mode=None):
     else:  # Multilingual mode
         return analyze_tagalog_sentiment_score(text)
 
+def analyze_english_sentiment_score(text):
+    """Analyze English text and return raw sentiment score."""
+    # Use VADER for base sentiment
+    vader_score = analyze_sentiment_vader(text)
+    
+    # Convert VADER text output to score if needed
+    if isinstance(vader_score, str):
+        if "Positive" in vader_score:
+            vader_score = 0.8
+        elif "Negative" in vader_score:
+            vader_score = -0.8
+        else:
+            vader_score = 0.0
+    
+    # Get MNB model score
+    mnb_score = float(train_mnb_model([text])[0].split()[0] == "Positive") * 2 - 1  # Convert to -1 to 1 range
+    
+    # Get combined score
+    combined = combined_sentiment_analysis(text)
+    if isinstance(combined, str):
+        if "Positive" in combined:
+            combined_score = 0.8
+        elif "Negative" in combined:
+            combined_score = -0.8
+        else:
+            combined_score = 0.0
+    else:
+        combined_score = combined
+    
+    # Calculate weighted average
+    final_score = (vader_score + mnb_score + combined_score) / 3
+    
+    # Ensure score is between -1 and 1
+    return max(min(final_score, 1.0), -1.0)
+
+def analyze_tagalog_sentiment_score(text):
+    """Analyze Tagalog text and return raw sentiment score."""
+    from textblob import TextBlob
+    
+    # Use TextBlob as base sentiment analyzer
+    blob = TextBlob(text)
+    base_score = blob.sentiment.polarity
+    
+    # Get additional Tagalog-specific features
+    # This is a simplified version - you may want to add more sophisticated Tagalog analysis
+    positive_words = ['maganda', 'mabuti', 'masaya', 'salamat', 'galing']
+    negative_words = ['pangit', 'masama', 'galit', 'ayaw', 'hindi']
+    
+    # Count positive and negative words
+    pos_count = sum(1 for word in text.lower().split() if word in positive_words)
+    neg_count = sum(1 for word in text.lower().split() if word in negative_words)
+    
+    # Adjust score based on word counts
+    word_score = (pos_count - neg_count) / (pos_count + neg_count + 1)  # Add 1 to avoid division by zero
+    
+    # Combine scores with weights
+    final_score = (base_score * 0.7) + (word_score * 0.3)
+    
+    # Ensure score is between -1 and 1
+    return max(min(final_score, 1.0), -1.0)
+
 def analyze_sentiment_score(text, language_mode=None):
     """
     Analyze sentiment and return just the raw score between -1 and 1.
@@ -126,35 +187,10 @@ def analyze_sentiment_score(text, language_mode=None):
     elif language_mode == "Tagalog Only":
         return analyze_tagalog_sentiment_score(text)
     else:  # Multilingual mode
-        return analyze_tagalog_sentiment_score(text)
-
-def analyze_english_sentiment_score(text):
-    """Analyze English text and return raw sentiment score."""
-    # Use enhanced sentiment analysis but extract just the score
-    sentiment = enhanced_sentiment_analysis(text)
-    # Convert the sentiment to a score between -1 and 1
-    if isinstance(sentiment, str):
-        if "Positive" in sentiment:
-            return 0.8
-        elif "Negative" in sentiment:
-            return -0.8
-        else:
-            return 0.0
-    return sentiment  # If it's already a numeric score
-
-def analyze_tagalog_sentiment_score(text):
-    """Analyze Tagalog text and return raw sentiment score."""
-    # Use Tagalog sentiment analysis but extract just the score
-    sentiment = tagalog_enhanced_sentiment_analysis(text)
-    # Convert the sentiment to a score between -1 and 1
-    if isinstance(sentiment, str):
-        if "Positive" in sentiment:
-            return 0.8
-        elif "Negative" in sentiment:
-            return -0.8
-        else:
-            return 0.0
-    return sentiment  # If it's already a numeric score
+        # For multilingual, take the average of both analyses
+        eng_score = analyze_english_sentiment_score(text)
+        tag_score = analyze_tagalog_sentiment_score(text)
+        return (eng_score + tag_score) / 2
 
 def analyze_comment_with_trolling(text, language_mode=None):
     """
