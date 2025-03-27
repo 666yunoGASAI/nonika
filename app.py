@@ -792,8 +792,13 @@ elif page == "Upload Data":
                 with tab1:
                     # Display data
                     st.subheader("Processed Comments")
+                    
+                    # Process comments to get all scores
+                    processed_df = process_comments(comments_df)
+                    
+                    # Display the processed dataframe
                     st.dataframe(
-                        display_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                        processed_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
                         hide_index=False
                     )
                     
@@ -1218,8 +1223,13 @@ elif page == "Fetch TikTok Comments":
                     with tab1:
                         # Display data
                         st.subheader("Processed Comments")
+                        
+                        # Process comments to get all scores
+                        processed_df = process_comments(comments_df)
+                        
+                        # Display the processed dataframe
                         st.dataframe(
-                            display_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                            processed_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
                             hide_index=False
                         )
                         
@@ -1298,6 +1308,7 @@ elif page == "Fetch TikTok Comments":
                             top_emojis = emoji_counter.most_common(10)
                             
                             emoji_df = pd.DataFrame(top_emojis, columns=['Emoji', 'Count'])
+                            
                             # Create horizontal bar chart for emojis
                             fig, ax = plt.subplots(figsize=(10, 5))
                             sns.barplot(y=emoji_df['Emoji'], x=emoji_df['Count'], ax=ax, orient='h')
@@ -1442,8 +1453,13 @@ elif page == "Fetch TikTok Comments":
                         with tab1:
                             # Display data
                             st.subheader("Processed Comments")
+                            
+                            # Process comments to get all scores
+                            processed_df = process_comments(comments_df)
+                            
+                            # Display the processed dataframe
                             st.dataframe(
-                                display_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
+                                processed_df[['Comment', 'VADER Score', 'MNB Score', 'Enhanced Score', 'Troll Score']],
                                 hide_index=False
                             )
                             
@@ -1522,6 +1538,7 @@ elif page == "Fetch TikTok Comments":
                                 top_emojis = emoji_counter.most_common(10)
                                 
                                 emoji_df = pd.DataFrame(top_emojis, columns=['Emoji', 'Count'])
+                                
                                 # Create horizontal bar chart for emojis
                                 fig, ax = plt.subplots(figsize=(10, 5))
                                 sns.barplot(y=emoji_df['Emoji'], x=emoji_df['Count'], ax=ax, orient='h')
@@ -1996,18 +2013,16 @@ def process_comments(comments_df):
     # Process each comment and store individual scores
     for idx, comment in comments_df.iterrows():
         # Get VADER score
-        vader_score = analyze_sentiment_vader(comment['Comment'])
-        display_df.at[idx, 'VADER Score'] = vader_score
+        vader_result = analyze_sentiment_vader(comment['Comment'])
+        display_df.at[idx, 'VADER Score'] = f"{vader_result:.2f}" if isinstance(vader_result, float) else vader_result
         
         # Get MNB score
         mnb_score = train_mnb_model([comment['Comment']])[0]
-        display_df.at[idx, 'MNB Score'] = mnb_score
+        display_df.at[idx, 'MNB Score'] = f"{mnb_score:.2f}"
         
-        # Get Enhanced score
+        # Get Enhanced score and Troll score
         analysis = analyze_comment_with_trolling(comment['Comment'])
         display_df.at[idx, 'Enhanced Score'] = f"{analysis['sentiment_score']:.2f}"
-        
-        # Get Troll score
         display_df.at[idx, 'Troll Score'] = f"{analysis['troll_score']:.2f}"
     
     return display_df
