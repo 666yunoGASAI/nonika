@@ -1706,18 +1706,58 @@ elif page == "Sentiment Explorer":
         The systems work independently to ensure accurate classification of both sentiment and troll behavior.
         """)
 
-# Add this test code to your app.py
-st.subheader("Debugging Output")
-st.write("Tagalog sentiment test:")
-test_tag = tagalog_enhanced_sentiment_analysis("Ang ganda naman ng app na ito!")
-st.write(f"Raw output: {test_tag}")
+# First, move all these function definitions to the top, after imports
+def analyze_sentiment_score(text):
+    """
+    Analyze sentiment and return a clean score between -1 and 1.
+    """
+    # Use VADER for base sentiment
+    vader_score = analyze_sentiment_vader(text)
+    
+    # Convert VADER text output to numeric score
+    if 'Positive' in vader_score:
+        base_score = 0.7
+    elif 'Negative' in vader_score:
+        base_score = -0.7
+    else:
+        base_score = 0.0
+        
+    # Adjust score based on emojis and other factors
+    processed = preprocess_text(text)
+    if processed['emojis']:
+        # Simple emoji adjustment
+        positive_emojis = len([e for e in processed['emojis'] if e in '😊😃😄😁👍❤️'])
+        negative_emojis = len([e for e in processed['emojis'] if e in '😢😭😠😡👎'])
+        emoji_adjustment = (positive_emojis - negative_emojis) * 0.1
+        base_score += emoji_adjustment
+    
+    # Ensure score is between -1 and 1
+    return max(min(base_score, 1.0), -1.0)
 
-st.write("English sentiment test:")
-test_eng = enhanced_sentiment_analysis("This app is really great!")
-st.write(f"Raw output: {test_eng}")
+def get_sentiment_type(score):
+    """
+    Convert sentiment score to sentiment type.
+    """
+    if score > 0.05:
+        return "Positive"
+    elif score < -0.05:
+        return "Negative"
+    else:
+        return "Neutral"
 
-# Add this DIRECTLY after importing the tagalog functions
-# This completely overrides the original function
+def analyze_english_sentiment_score(text):
+    """
+    Analyze English text sentiment and return score between -1 and 1.
+    """
+    return analyze_sentiment_score(text)
+
+def analyze_tagalog_sentiment_score(text):
+    """
+    Analyze Tagalog text sentiment and return score between -1 and 1.
+    """
+    # For now, use same analysis as English but could be enhanced for Tagalog
+    return analyze_sentiment_score(text)
+
 def tagalog_enhanced_sentiment_analysis(text):
     """
     A simple sentiment analysis function for Tagalog text.
@@ -1732,13 +1772,18 @@ def tagalog_enhanced_sentiment_analysis(text):
     # Return formatted string
     return f"{sentiment} ({score:.2f})"
 
-# Override the imported function with our clean version
-from tagalog_sentiment import get_tagalog_sentiment_breakdown
-
-# Run the app
+# Move the test code to the end of the file, after all function definitions
 if __name__ == "__main__":
-    # This ensures the app runs properly when executed directly
-    pass
+    # Add debugging output section
+    st.subheader("Debugging Output")
+    
+    st.write("Tagalog sentiment test:")
+    test_tag = tagalog_enhanced_sentiment_analysis("Ang ganda naman ng app na ito!")
+    st.write(f"Raw output: {test_tag}")
+
+    st.write("English sentiment test:")
+    test_eng = enhanced_sentiment_analysis("This app is really great!")
+    st.write(f"Raw output: {test_eng}")
 
 # When processing comments
 def process_comments(comments_df):
@@ -1809,54 +1854,3 @@ def calculate_market_metrics(comments_df):
     }
     
     return metrics
-
-def analyze_sentiment_score(text):
-    """
-    Analyze sentiment and return a clean score between -1 and 1.
-    """
-    # Use VADER for base sentiment
-    vader_score = analyze_sentiment_vader(text)
-    
-    # Convert VADER text output to numeric score
-    if 'Positive' in vader_score:
-        base_score = 0.7
-    elif 'Negative' in vader_score:
-        base_score = -0.7
-    else:
-        base_score = 0.0
-        
-    # Adjust score based on emojis and other factors
-    processed = preprocess_text(text)
-    if processed['emojis']:
-        # Simple emoji adjustment
-        positive_emojis = len([e for e in processed['emojis'] if e in '😊😃😄😁👍❤️'])
-        negative_emojis = len([e for e in processed['emojis'] if e in '😢😭😠😡👎'])
-        emoji_adjustment = (positive_emojis - negative_emojis) * 0.1
-        base_score += emoji_adjustment
-    
-    # Ensure score is between -1 and 1
-    return max(min(base_score, 1.0), -1.0)
-
-def get_sentiment_type(score):
-    """
-    Convert sentiment score to sentiment type.
-    """
-    if score > 0.05:
-        return "Positive"
-    elif score < -0.05:
-        return "Negative"
-    else:
-        return "Neutral"
-
-def analyze_english_sentiment_score(text):
-    """
-    Analyze English text sentiment and return score between -1 and 1.
-    """
-    return analyze_sentiment_score(text)
-
-def analyze_tagalog_sentiment_score(text):
-    """
-    Analyze Tagalog text sentiment and return score between -1 and 1.
-    """
-    # For now, use same analysis as English but could be enhanced for Tagalog
-    return analyze_sentiment_score(text)
