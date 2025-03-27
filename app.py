@@ -1148,91 +1148,48 @@ elif page == "Upload Data":
                     # Market Trends Analysis with separated concerns
                     st.subheader("Market Analysis Dashboard")
                     
-                    # Create two columns for main metrics
+                    # Calculate metrics first
+                    market_score = calculate_market_trend_score(comments_df)
+                    valid_comments = len(comments_df[~comments_df['Is_Troll']])
+                    total_comments = len(comments_df)
+                    troll_percentage = (total_comments - valid_comments) / total_comments * 100 if total_comments > 0 else 0
+                    purchase_volume = predict_purchase_volume(comments_df)
+                    
                     col1, col2 = st.columns(2)
                     
                     with col1:
                         st.subheader("Sentiment Metrics")
-                        # Calculate metrics excluding trolls
-                        valid_comments = comments_df[~comments_df['Is_Troll']]
-                        valid_comments['Clean_Sentiment'] = valid_comments['Enhanced_Score'].apply(
-                            lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
-                        )
-                        market_score = calculate_market_trend_score(comments_df)
-                        
                         st.metric("Market Sentiment Score", f"{market_score:.2f}")
-                        st.metric("Valid Comments", f"{len(valid_comments)} / {len(comments_df)}")
+                        st.metric("Valid Comments", f"{valid_comments} / {total_comments}")
                         
                         # Show sentiment distribution
-                        sentiment_counts = valid_comments['Clean_Sentiment'].value_counts()
-                        fig = px.pie(
-                            values=sentiment_counts.values,
-                            names=sentiment_counts.index,
-                            title="Sentiment Distribution (Excluding Trolls)",
-                            color=sentiment_counts.index,
-                            color_discrete_map={'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
-                        )
-                        st.plotly_chart(fig)
+                        valid_comments_df = comments_df[~comments_df['Is_Troll']]
+                        if len(valid_comments_df) > 0:
+                            sentiment_counts = valid_comments_df['Enhanced_Score'].apply(
+                                lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
+                            ).value_counts()
+                            
+                            fig = px.pie(
+                                values=sentiment_counts.values,
+                                names=sentiment_counts.index,
+                                title="Sentiment Distribution (Excluding Trolls)",
+                                color=sentiment_counts.index,
+                                color_discrete_map={'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
+                            )
+                            st.plotly_chart(fig)
                     
                     with col2:
                         st.subheader("Troll Analysis")
-                        troll_count = len(comments_df[comments_df['Is_Troll']])
-                        troll_percentage = (troll_count / len(comments_df)) * 100
-                        
                         st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
                         st.metric("Risk Level", get_troll_risk_level_from_score(troll_percentage))
                         
-                        # Show troll risk distribution
-                        risk_counts = comments_df['Troll_Score'].apply(
-                            lambda x: pd.cut([x], bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
-                                           labels=['Low', 'Medium', 'High', 'Critical'])[0]
-                        ).value_counts()
-                        
-                        fig = px.bar(
-                            x=risk_counts.index,
-                            y=risk_counts.values,
-                            title="Troll Risk Distribution",
-                            color=risk_counts.index,
-                            color_discrete_map={
-                                'Low': '#4CAF50',
-                                'Medium': '#FFC107',
-                                'High': '#FF9800',
-                                'Critical': '#F44336'
-                            }
-                        )
-                        st.plotly_chart(fig)
+                        # Show predictions
+                        st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
                     
-                    # Market prediction visualization
-                    st.subheader("Market Prediction")
-                    market_fig = plot_market_prediction(comments_df)
-                    st.plotly_chart(market_fig)
-                    
-                    # Purchase volume prediction
-                    purchase_volume = predict_purchase_volume(comments_df)
-                    st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
-                    
-                    # Detailed market report
+                    # Market report
                     st.subheader("Market Analysis Report")
                     report = generate_market_trend_report(comments_df)
                     st.markdown(report)
-                    
-                    # Add download button for report
-                    report_csv = pd.DataFrame({
-                        'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
-                        'Value': [
-                            market_score,
-                            len(valid_comments),
-                            troll_percentage,
-                            purchase_volume
-                        ]
-                    }).to_csv(index=False)
-                    
-                    st.download_button(
-                        label="Download Market Analysis Report",
-                        data=report_csv,
-                        file_name="market_analysis_report.csv",
-                        mime="text/csv"
-                    )
 
 # TikTok Comment Fetching
 elif page == "Fetch TikTok Comments":
@@ -1586,91 +1543,48 @@ elif page == "Fetch TikTok Comments":
                             # Market Trends Analysis with separated concerns
                             st.subheader("Market Analysis Dashboard")
                             
-                            # Create two columns for main metrics
+                            # Calculate metrics first
+                            market_score = calculate_market_trend_score(comments_df)
+                            valid_comments = len(comments_df[~comments_df['Is_Troll']])
+                            total_comments = len(comments_df)
+                            troll_percentage = (total_comments - valid_comments) / total_comments * 100 if total_comments > 0 else 0
+                            purchase_volume = predict_purchase_volume(comments_df)
+                            
                             col1, col2 = st.columns(2)
                             
                             with col1:
                                 st.subheader("Sentiment Metrics")
-                                # Calculate metrics excluding trolls
-                                valid_comments = comments_df[~comments_df['Is_Troll']]
-                                valid_comments['Clean_Sentiment'] = valid_comments['Enhanced_Score'].apply(
-                                    lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
-                                )
-                                market_score = calculate_market_trend_score(comments_df)
-                                
                                 st.metric("Market Sentiment Score", f"{market_score:.2f}")
-                                st.metric("Valid Comments", f"{len(valid_comments)} / {len(comments_df)}")
+                                st.metric("Valid Comments", f"{valid_comments} / {total_comments}")
                                 
                                 # Show sentiment distribution
-                                sentiment_counts = valid_comments['Clean_Sentiment'].value_counts()
-                                fig = px.pie(
-                                    values=sentiment_counts.values,
-                                    names=sentiment_counts.index,
-                                    title="Sentiment Distribution (Excluding Trolls)",
-                                    color=sentiment_counts.index,
-                                    color_discrete_map={'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
-                                )
-                                st.plotly_chart(fig)
+                                valid_comments_df = comments_df[~comments_df['Is_Troll']]
+                                if len(valid_comments_df) > 0:
+                                    sentiment_counts = valid_comments_df['Enhanced_Score'].apply(
+                                        lambda score: 'Positive' if score > 0.05 else 'Negative' if score < -0.05 else 'Neutral'
+                                    ).value_counts()
+                                    
+                                    fig = px.pie(
+                                        values=sentiment_counts.values,
+                                        names=sentiment_counts.index,
+                                        title="Sentiment Distribution (Excluding Trolls)",
+                                        color=sentiment_counts.index,
+                                        color_discrete_map={'Positive': 'green', 'Neutral': 'gray', 'Negative': 'red'}
+                                    )
+                                    st.plotly_chart(fig)
                             
                             with col2:
                                 st.subheader("Troll Analysis")
-                                troll_count = len(comments_df[comments_df['Is_Troll']])
-                                troll_percentage = (troll_count / len(comments_df)) * 100
-                                
                                 st.metric("Troll Percentage", f"{troll_percentage:.1f}%")
                                 st.metric("Risk Level", get_troll_risk_level_from_score(troll_percentage))
                                 
-                                # Show troll risk distribution
-                                risk_counts = comments_df['Troll_Score'].apply(
-                                    lambda x: pd.cut([x], bins=[-float('inf'), 0.3, 0.6, 0.8, float('inf')],
-                                                   labels=['Low', 'Medium', 'High', 'Critical'])[0]
-                                ).value_counts()
-                                
-                                fig = px.bar(
-                                    x=risk_counts.index,
-                                    y=risk_counts.values,
-                                    title="Troll Risk Distribution",
-                                    color=risk_counts.index,
-                                    color_discrete_map={
-                                        'Low': '#4CAF50',
-                                        'Medium': '#FFC107',
-                                        'High': '#FF9800',
-                                        'Critical': '#F44336'
-                                    }
-                                )
-                                st.plotly_chart(fig)
-                                
-                                # Market prediction visualization
-                                st.subheader("Market Prediction")
-                                market_fig = plot_market_prediction(comments_df)
-                                st.plotly_chart(market_fig)
-                                
-                                # Purchase volume prediction
-                                purchase_volume = predict_purchase_volume(comments_df)
+                                # Show predictions
                                 st.metric("Predicted Purchase Volume", f"{purchase_volume:,}")
-                                
-                                # Detailed market report
-                                st.subheader("Market Analysis Report")
-                                report = generate_market_trend_report(comments_df)
-                                st.markdown(report)
-                                
-                                # Add download button for report
-                                report_csv = pd.DataFrame({
-                                    'Metric': ['Market Score', 'Valid Comments', 'Troll Percentage', 'Purchase Volume'],
-                                    'Value': [
-                                        market_score,
-                                        len(valid_comments),
-                                        troll_percentage,
-                                        purchase_volume
-                                    ]
-                                }).to_csv(index=False)
-                                
-                                st.download_button(
-                                    label="Download Market Analysis Report",
-                                    data=report_csv,
-                                    file_name="market_analysis_report.csv",
-                                    mime="text/csv"
-                                )
+                            
+                            # Market report
+                            st.subheader("Market Analysis Report")
+                            report = generate_market_trend_report(comments_df)
+                            st.markdown(report)
                 else:
                     st.error("Failed to fetch comments. Please check the video link and try again.")
         else:
@@ -1892,3 +1806,123 @@ def calculate_market_metrics(comments_df):
     }
     
     return metrics
+
+def calculate_market_trend_score(comments_df):
+    """
+    Calculate market trend score based on sentiment and troll metrics.
+    
+    Args:
+        comments_df (pd.DataFrame): DataFrame containing comment analysis
+        
+    Returns:
+        float: Market trend score between -1 and 1
+    """
+    # Filter out troll comments
+    valid_comments = comments_df[~comments_df['Is_Troll']]
+    
+    if len(valid_comments) == 0:
+        return 0.0
+    
+    # Calculate average sentiment score from valid comments
+    avg_sentiment = valid_comments['Enhanced_Score'].mean()
+    
+    # Calculate troll impact
+    troll_ratio = len(comments_df[comments_df['Is_Troll']]) / len(comments_df)
+    troll_penalty = troll_ratio * 0.5  # Reduce score based on troll presence
+    
+    # Final score combines sentiment and troll impact
+    market_score = avg_sentiment * (1 - troll_penalty)
+    
+    # Ensure score is between -1 and 1
+    return max(min(market_score, 1.0), -1.0)
+
+def predict_purchase_volume(comments_df):
+    """
+    Predict purchase volume based on sentiment and engagement metrics.
+    
+    Args:
+        comments_df (pd.DataFrame): DataFrame containing comment analysis
+        
+    Returns:
+        int: Predicted purchase volume
+    """
+    # Get base metrics
+    total_comments = len(comments_df)
+    valid_comments = len(comments_df[~comments_df['Is_Troll']])
+    
+    # Calculate positive sentiment ratio
+    positive_comments = len(comments_df[comments_df['Enhanced_Score'] > 0.05])
+    sentiment_ratio = positive_comments / total_comments if total_comments > 0 else 0
+    
+    # Basic volume prediction
+    base_volume = total_comments * 10  # Assume each comment represents 10 potential customers
+    adjusted_volume = base_volume * sentiment_ratio * (valid_comments / total_comments)
+    
+    # Round to nearest hundred
+    return max(int(round(adjusted_volume, -2)), 100)
+
+def generate_market_trend_report(comments_df):
+    """
+    Generate a detailed market trend report.
+    
+    Args:
+        comments_df (pd.DataFrame): DataFrame containing comment analysis
+        
+    Returns:
+        str: Formatted market trend report
+    """
+    # Calculate key metrics
+    market_score = calculate_market_trend_score(comments_df)
+    total_comments = len(comments_df)
+    valid_comments = len(comments_df[~comments_df['Is_Troll']])
+    troll_percentage = (total_comments - valid_comments) / total_comments * 100 if total_comments > 0 else 0
+    
+    # Determine market sentiment
+    if market_score > 0.3:
+        sentiment = "Positive"
+        outlook = "Favorable"
+    elif market_score < -0.3:
+        sentiment = "Negative"
+        outlook = "Concerning"
+    else:
+        sentiment = "Neutral"
+        outlook = "Stable"
+    
+    # Generate report
+    report = f"""
+    ### Market Trend Analysis Report
+    
+    **Overall Market Sentiment:** {sentiment}
+    **Market Score:** {market_score:.2f}
+    **Market Outlook:** {outlook}
+    
+    #### Key Metrics:
+    - Total Comments Analyzed: {total_comments}
+    - Valid Comments: {valid_comments}
+    - Troll Percentage: {troll_percentage:.1f}%
+    
+    #### Recommendations:
+    {generate_recommendations(market_score, troll_percentage)}
+    """
+    
+    return report
+
+def generate_recommendations(market_score, troll_percentage):
+    """Generate recommendations based on market metrics."""
+    recommendations = []
+    
+    if market_score > 0.3:
+        recommendations.append("- Capitalize on positive sentiment with promotional campaigns")
+        recommendations.append("- Consider expanding market presence")
+    elif market_score < -0.3:
+        recommendations.append("- Address negative feedback promptly")
+        recommendations.append("- Consider customer satisfaction initiatives")
+    else:
+        recommendations.append("- Maintain current market strategy")
+        recommendations.append("- Monitor sentiment trends closely")
+    
+    if troll_percentage > 20:
+        recommendations.append("- Implement stronger comment moderation")
+        recommendations.append("- Consider community management strategies")
+    
+    return "\n".join(recommendations)
